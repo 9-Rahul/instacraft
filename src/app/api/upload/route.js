@@ -51,16 +51,22 @@ export async function POST(request) {
 
     // 2. Validate MIME Type and determine secure extension
     const ALLOWED_MIME_TYPES = {
-      'image/jpeg': '.jpg',
-      'image/png': '.png',
-      'image/webp': '.webp',
-      'video/mp4': '.mp4'
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/jpg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/webp': ['.webp'],
+      'video/mp4': ['.mp4']
     };
     
-    const secureExtension = ALLOWED_MIME_TYPES[file.type];
-    if (!secureExtension) {
+    const allowedExtensions = ALLOWED_MIME_TYPES[file.type];
+    if (!allowedExtensions) {
+      console.warn(`[Upload] Rejected unsupported MIME type: ${file.type}`);
       return NextResponse.json({ error: "Unsupported file type. Only JPG, PNG, WEBP, and MP4 are allowed." }, { status: 415 });
     }
+
+    // Determine the extension to use (preserve original if it's one of the allowed ones)
+    const originalExt = path.extname(file.name).toLowerCase();
+    const secureExtension = allowedExtensions.includes(originalExt) ? originalExt : allowedExtensions[0];
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -71,7 +77,12 @@ export async function POST(request) {
     const uploadDir = path.join(process.cwd(), 'public', folderName);
 
     // Ensure directory exists
-    await mkdir(uploadDir, { recursive: true });
+    try {
+      await mkdir(uploadDir, { recursive: true });
+    } catch (err) {
+      console.error(`[Upload] Failed to create directory ${uploadDir}:`, err);
+      return NextResponse.json({ error: "Server storage configuration error." }, { status: 500 });
+    }
 
     // Compute hash of the uploaded file content
     const uploadedHash = hashBuffer(buffer);
@@ -85,19 +96,24 @@ export async function POST(request) {
     }
 
     // 3. No match found — save as a new file with a short hash prefix and secure extension
-    // Strip original extension and non-alphanumeric chars for base name
-    const originalNameWithoutExt = file.name.split('.')[0] || 'file';
+    const originalNameWithoutExt = path.parse(file.name).name || 'file';
     const safeBaseName = originalNameWithoutExt.replace(/[^a-zA-Z0-9\-_]/g, '');
     const shortHash = uploadedHash.substring(0, 10);
     const filename = `${shortHash}-${safeBaseName}${secureExtension}`;
     const filepath = path.join(uploadDir, filename);
-    await writeFile(filepath, buffer);
-    console.log(`[Upload] Saved new file: /${folderName}/${filename}`);
+    
+    try {
+      await writeFile(filepath, buffer);
+      console.log(`[Upload] Saved new file: /${folderName}/${filename}`);
+    } catch (err) {
+      console.error(`[Upload] Failed to write file to ${filepath}:`, err);
+      return NextResponse.json({ error: "Failed to save file to server." }, { status: 500 });
+    }
 
     return NextResponse.json({ url: `/${folderName}/${filename}` });
 
   } catch (error) {
-    console.error("Upload Error:", error);
-    return NextResponse.json({ error: "Failed to upload file." }, { status: 500 });
+    console.error("Critical Upload Error:", error);
+    return NextResponse.json({ error: "An unexpected error occurred during upload." }, { status: 500 });
   }
 }

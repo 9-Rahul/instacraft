@@ -17,6 +17,7 @@ export default function AdminProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [editProduct, setEditProduct] = useState(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [sortOption, setSortOption] = useState("Newest");
   const [sortConfig, setSortConfig] = useState({
     key: "createdAt",
@@ -406,11 +407,12 @@ export default function AdminProductsPage() {
                           type="button"
                           className="btn btn-outline"
                           style={{ whiteSpace: "nowrap" }}
+                          disabled={isUploadingImage}
                           onClick={() =>
                             document.getElementById("file-upload").click()
                           }
                         >
-                          Upload
+                          {isUploadingImage ? "Uploading..." : "Upload"}
                         </button>
                       </div>
                       <input
@@ -421,6 +423,7 @@ export default function AdminProductsPage() {
                         onChange={async (e) => {
                           const file = e.target.files[0];
                           if (file) {
+                            setIsUploadingImage(true);
                             const formData = new FormData();
                             formData.append("file", file);
                             try {
@@ -439,6 +442,8 @@ export default function AdminProductsPage() {
                             } catch (err) {
                               console.error(err);
                               alert("Network error during upload");
+                            } finally {
+                              setIsUploadingImage(false);
                             }
                           }
                         }}
@@ -763,8 +768,8 @@ export default function AdminProductsPage() {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editProduct ? "Save Changes" : "Add Product"}
+                <button type="submit" className="btn btn-primary" disabled={isUploadingImage}>
+                  {isUploadingImage ? "Uploading Image..." : (editProduct ? "Save Changes" : "Add Product")}
                 </button>
               </div>
             </form>
