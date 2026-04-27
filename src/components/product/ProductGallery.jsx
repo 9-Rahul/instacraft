@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function ProductGallery({ images, title, outOfStock }) {
   const [active, setActive] = useState(0);
@@ -13,6 +14,9 @@ export default function ProductGallery({ images, title, outOfStock }) {
     filter: outOfStock ? 'grayscale(1) opacity(0.7)' : 'none',
     transition: 'filter 0.5s ease, opacity 0.5s ease'
   };
+
+  const prevImage = () => setActive((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  const nextImage = () => setActive((prev) => (prev === images.length - 1 ? 0 : prev + 1));
 
   return (
     <div className="product-gallery">
@@ -26,6 +30,27 @@ export default function ProductGallery({ images, title, outOfStock }) {
           priority
           style={imageStyle}
         />
+        {/* Navigation arrows — only when multiple images */}
+        {images.length > 1 && (
+          <>
+            <button
+              className="product-gallery-arrow product-gallery-arrow-left"
+              onClick={prevImage}
+              aria-label="Previous image"
+              type="button"
+            >
+              <ChevronLeft size={22} />
+            </button>
+            <button
+              className="product-gallery-arrow product-gallery-arrow-right"
+              onClick={nextImage}
+              aria-label="Next image"
+              type="button"
+            >
+              <ChevronRight size={22} />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Thumbnails */}

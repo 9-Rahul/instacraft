@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useAdmin } from "@/store/AdminContext";
 import { useAuth } from "@/store/AuthContext";
 import { formatPrice, calcDiscountPercent } from "@/lib/utils";
-import { X, AlertTriangle, Star } from "lucide-react";
+import { X, AlertTriangle, Star, GripVertical, ImagePlus, Trash2 } from "lucide-react";
 import AdminPagination from "@/components/admin/AdminPagination";
 import { getProducts } from "@/lib/api";
 
@@ -60,7 +60,7 @@ export default function AdminProductsPage() {
     quantity: "1 piece",
     type: "product",
     ctaType: "form",
-    imageUrl: "",
+    images: [],
     weight: 1,
     length: 15,
     breadth: 15,
@@ -144,7 +144,7 @@ export default function AdminProductsPage() {
       quantity: "1 piece",
       type: "product",
       ctaType: "form",
-      imageUrl: "/images/offer-f6cd7197.webp",
+      images: [],
       weight: 1,
       length: 15,
       breadth: 15,
@@ -168,7 +168,7 @@ export default function AdminProductsPage() {
       quantity: p.quantity || "1 piece",
       type: p.type || "product",
       ctaType: p.ctaType || "form",
-      imageUrl: (p.images && p.images[0]) ? p.images[0] : "",
+      images: Array.isArray(p.images) ? [...p.images] : [],
       weight: p.weight || 1,
       length: p.length || 15,
       breadth: p.breadth || 15,
@@ -236,7 +236,7 @@ export default function AdminProductsPage() {
       length: Number(form.length) || 15,
       breadth: Number(form.breadth) || 15,
       height: Number(form.height) || 10,
-      images: [form.imageUrl || "/images/offer-f6cd7197.webp"],
+      images: form.images.length > 0 ? form.images : ["/images/offer-f6cd7197.webp"],
       rating: editProduct?.rating || 4.5,
       reviews: editProduct?.reviews || 0,
       tags: [form.category],
@@ -321,7 +321,7 @@ export default function AdminProductsPage() {
           aria-modal="true"
           aria-label={editProduct ? "Edit Product" : "Add Product"}
         >
-          <div className="modal">
+          <div className="modal" style={{ maxWidth: 720 }}>
             <div className="modal-header">
               <h2 className="heading-sm">
                 {editProduct ? "Edit Product" : "Add New Product"}
@@ -339,45 +339,223 @@ export default function AdminProductsPage() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 2fr",
+                    gridTemplateColumns: "1fr",
                     gap: "var(--space-6)",
                   }}
                 >
-                  {/* Left Column: Image Preview */}
-                  <div className="form-group">
-                    <label className="form-label">Image Preview</label>
-                    <div
-                      style={{
-                        background: "var(--surface-sunken)",
-                        borderRadius: "var(--border-radius-lg)",
-                        padding: "var(--space-2)",
-                        border: "1px dashed var(--border-color)",
-                        height: 260,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        overflow: "hidden",
+                  {/* Left Column: Image Gallery Preview */}
+                  <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                    <label className="form-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span>
+                        Product Images ({form.images.length}/5)
+                        {form.images.length >= 5 && (
+                          <span style={{ marginLeft: 8, fontSize: "var(--fs-11)", color: "var(--warning)", fontWeight: 600 }}>Max reached</span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                        disabled={isUploadingImage || form.images.length >= 5}
+                        onClick={() => document.getElementById("file-upload").click()}
+                      >
+                        <ImagePlus size={14} />
+                        {isUploadingImage ? "Uploading..." : "Add Image"}
+                      </button>
+                    </label>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: "none" }}
+                      onChange={async (e) => {
+                        const MAX_IMAGES = 5;
+                        const selected = Array.from(e.target.files);
+                        if (selected.length === 0) return;
+
+                        // Capture current count before any state update
+                        const currentCount = form.images.length;
+                        if (currentCount >= MAX_IMAGES) {
+                          alert(`You can upload a maximum of ${MAX_IMAGES} images per product.`);
+                          e.target.value = "";
+                          return;
+                        }
+
+                        const slots = MAX_IMAGES - currentCount;
+                        const filesToUpload = selected.slice(0, slots);
+                        if (selected.length > slots) {
+                          alert(`Only ${slots} image${slots === 1 ? "" : "s"} can be added (max ${MAX_IMAGES}). The rest were skipped.`);
+                        }
+
+                        setIsUploadingImage(true);
+                        try {
+                          const idToken = await user.getIdToken();
+                          for (const file of filesToUpload) {
+                            const formData = new FormData();
+                            formData.append("file", file);
+                            const res = await fetch("/api/upload", {
+                              method: "POST",
+                              headers: { Authorization: `Bearer ${idToken}` },
+                              body: formData,
+                            });
+                            const data = await res.json();
+                            if (res.ok && data.url) {
+                              setForm((f) => ({ ...f, images: [...f.images, data.url] }));
+                            } else {
+                              alert(data.error || "Upload failed for: " + file.name);
+                            }
+                          }
+                        } catch (err) {
+                          console.error(err);
+                          alert("Network error during upload");
+                        } finally {
+                          setIsUploadingImage(false);
+                          e.target.value = "";
+                        }
                       }}
-                    >
-                      {form.imageUrl ? (
-                        <img
-                          src={form.imageUrl}
-                          alt="Preview"
-                          style={{
-                            maxWidth: "100%",
-                            maxHeight: "100%",
-                            objectFit: "contain",
-                          }}
-                        />
-                      ) : (
-                        <span
-                          className="text-muted"
-                          style={{ fontSize: "var(--fs-13)" }}
-                        >
-                          No image
+                    />
+
+                    {form.images.length === 0 ? (
+                      <div
+                        style={{
+                          background: "var(--surface-sunken)",
+                          borderRadius: "var(--border-radius-lg)",
+                          padding: "var(--space-8)",
+                          border: "2px dashed var(--border-color)",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "var(--space-3)",
+                          cursor: "pointer",
+                          transition: "border-color 0.2s",
+                        }}
+                        onClick={() => document.getElementById("file-upload").click()}
+                        onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--primary)"}
+                        onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--border-color)"}
+                      >
+                        <ImagePlus size={32} style={{ color: "var(--text-muted)" }} />
+                        <span className="text-muted" style={{ fontSize: "var(--fs-14)" }}>
+                          Click to upload product images
                         </span>
-                      )}
-                    </div>
+                        <span className="text-muted" style={{ fontSize: "var(--fs-12)" }}>
+                          First image will be the primary / cover photo
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
+                          gap: "var(--space-3)",
+                          background: "var(--surface-sunken)",
+                          borderRadius: "var(--border-radius-lg)",
+                          padding: "var(--space-3)",
+                          border: "1px solid var(--border-light)",
+                        }}
+                      >
+                        {form.images.map((url, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              position: "relative",
+                              aspectRatio: "1",
+                              borderRadius: "var(--border-radius)",
+                              overflow: "hidden",
+                              border: idx === 0 ? "2px solid var(--primary)" : "2px solid transparent",
+                              background: "var(--surface)",
+                            }}
+                          >
+                            <img
+                              src={url}
+                              alt={`Product image ${idx + 1}`}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                                objectFit: "cover",
+                              }}
+                            />
+                            {idx === 0 && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: 4,
+                                  left: 4,
+                                  background: "var(--primary)",
+                                  color: "#fff",
+                                  fontSize: "10px",
+                                  fontWeight: 700,
+                                  padding: "2px 6px",
+                                  borderRadius: "var(--border-radius-sm)",
+                                  textTransform: "uppercase",
+                                  letterSpacing: "0.05em",
+                                }}
+                              >
+                                Primary
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setForm((f) => ({ ...f, images: f.images.filter((_, i) => i !== idx) }))}
+                              style={{
+                                position: "absolute",
+                                top: 4,
+                                right: 4,
+                                width: 22,
+                                height: 22,
+                                borderRadius: "50%",
+                                background: "rgba(0,0,0,0.6)",
+                                color: "#fff",
+                                border: "none",
+                                cursor: "pointer",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                padding: 0,
+                                transition: "background 0.15s",
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = "var(--error)"}
+                              onMouseLeave={(e) => e.currentTarget.style.background = "rgba(0,0,0,0.6)"}
+                              title="Remove image"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                        {/* Add more button inline — hidden when at the 5-image limit */}
+                        {form.images.length < 5 && (
+                          <div
+                            style={{
+                              aspectRatio: "1",
+                              borderRadius: "var(--border-radius)",
+                              border: "2px dashed var(--border-color)",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              cursor: "pointer",
+                              transition: "border-color 0.2s, background 0.2s",
+                              background: "transparent",
+                            }}
+                            onClick={() => document.getElementById("file-upload").click()}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = "var(--primary)";
+                              e.currentTarget.style.background = "rgba(122,31,31,0.04)";
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = "var(--border-color)";
+                              e.currentTarget.style.background = "transparent";
+                            }}
+                            title="Add more images"
+                          >
+                            <ImagePlus size={20} style={{ color: "var(--text-muted)" }} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <p style={{ fontSize: "var(--fs-12)", color: "var(--text-muted)", marginTop: 4 }}>
+                      Max 5 images per product. First image is the cover photo shown in listings. Click ✕ to remove.
+                    </p>
                   </div>
 
                   {/* Right Column: Key Details */}
@@ -386,79 +564,9 @@ export default function AdminProductsPage() {
                       display: "flex",
                       flexDirection: "column",
                       gap: "var(--space-4)",
+                      gridColumn: "1 / -1",
                     }}
                   >
-                    <div className="form-group">
-                      <label htmlFor="prod-image" className="form-label">
-                        Primary Image URL *
-                      </label>
-                      <div style={{ display: "flex", gap: "var(--space-2)" }}>
-                        <input
-                          id="prod-image"
-                          className="form-input"
-                          required
-                          value={form.imageUrl}
-                          onChange={(e) =>
-                            setForm((f) => ({ ...f, imageUrl: e.target.value }))
-                          }
-                          placeholder="e.g. /images/products/item.webp"
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-outline"
-                          style={{ whiteSpace: "nowrap" }}
-                          disabled={isUploadingImage}
-                          onClick={() =>
-                            document.getElementById("file-upload").click()
-                          }
-                        >
-                          {isUploadingImage ? "Uploading..." : "Upload"}
-                        </button>
-                      </div>
-                      <input
-                        id="file-upload"
-                        type="file"
-                        accept="image/*"
-                        style={{ display: "none" }}
-                        onChange={async (e) => {
-                          const file = e.target.files[0];
-                          if (file) {
-                            setIsUploadingImage(true);
-                            const formData = new FormData();
-                            formData.append("file", file);
-                            try {
-                              const idToken = await user.getIdToken();
-                              const res = await fetch("/api/upload", {
-                                method: "POST",
-                                headers: { Authorization: `Bearer ${idToken}` },
-                                body: formData,
-                              });
-                              const data = await res.json();
-                              if (res.ok && data.url) {
-                                setForm((f) => ({ ...f, imageUrl: data.url }));
-                              } else {
-                                alert(data.error || "Upload failed");
-                              }
-                            } catch (err) {
-                              console.error(err);
-                              alert("Network error during upload");
-                            } finally {
-                              setIsUploadingImage(false);
-                            }
-                          }
-                        }}
-                      />
-                      <p
-                        style={{
-                          fontSize: "var(--fs-12)",
-                          color: "var(--text-muted)",
-                          marginTop: 4,
-                        }}
-                      >
-                        Image will be uploaded to local storage and stored as a
-                        URL reference.
-                      </p>
-                    </div>
                     <div className="form-group">
                       <label htmlFor="prod-title" className="form-label">
                         Product Title *
