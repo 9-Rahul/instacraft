@@ -6,7 +6,9 @@ import { useAuth } from '@/store/AuthContext';
 import { 
   getHeroSlides, 
   updateHeroSlides, 
-  getProducts 
+  getProducts,
+  getSiteConfig,
+  updateSiteConfig
 } from '@/lib/api';
 import { 
   Save, AlertCircle, CheckCircle2, 
@@ -21,6 +23,8 @@ export default function HeroSliderAdminPage() {
   const [heroSlides, setHeroSlides] = useState([]);
   const [products, setProducts] = useState([]);
   const [productSort, setProductSort] = useState('name-asc');
+  const [siteConfig, setSiteConfig] = useState(null);
+  const [maxMbInput, setMaxMbInput] = useState(30);
   const [status, setStatus] = useState({ type: '', message: '' });
 
   useEffect(() => {
@@ -29,11 +33,14 @@ export default function HeroSliderAdminPage() {
       if (!user) return;
       try {
         const idToken = await user.getIdToken();
-        const [slidesData, productsData] = await Promise.all([
+        const [slidesData, productsData, configData] = await Promise.all([
           getHeroSlides(true, true, idToken),
-          getProducts(true)
+          getProducts(true),
+          getSiteConfig(true)
         ]);
         setHeroSlides(Array.isArray(slidesData) ? slidesData : []);
+        setSiteConfig(configData);
+        if (configData?.maxUploadSize) setMaxMbInput(configData.maxUploadSize);
         // Handle both old array format and new pagination object format
         const productList = Array.isArray(productsData) ? productsData : (productsData?.products || []);
         setProducts(productList);
@@ -49,13 +56,19 @@ export default function HeroSliderAdminPage() {
     if (!user) return;
     try {
       const idToken = await user.getIdToken();
+      
+      // Save global upload limit if changed
+      if (siteConfig && maxMbInput !== siteConfig.maxUploadSize) {
+        await updateSiteConfig({ ...siteConfig, maxUploadSize: parseFloat(maxMbInput) }, idToken);
+      }
+
       const slidesWithOrder = heroSlides.map((slide, idx) => ({
         ...slide,
         order: idx,
         active: slide.active !== undefined ? slide.active : true
       }));
       await updateHeroSlides(slidesWithOrder, idToken);
-      setStatus({ type: 'success', message: 'Hero Slider updated successfully!' });
+      setStatus({ type: 'success', message: 'Hero Slider and settings updated successfully!' });
       setTimeout(() => {
         setStatus({ type: '', message: '' });
         window.location.reload();
@@ -151,6 +164,20 @@ export default function HeroSliderAdminPage() {
           <h1 className="heading-lg"><span>Hero Slider Management</span></h1>
         </div>
         <div className="flex-responsive">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--surface-sunken)', padding: '6px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', marginRight: 'var(--space-4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Video size={16} className="text-muted" />
+              <span className="text-small" style={{ fontWeight: 600 }}>Max Upload:</span>
+              <input 
+                type="number" 
+                className="form-input form-input-sm" 
+                style={{ width: '70px', textAlign: 'center' }}
+                value={maxMbInput}
+                onChange={(e) => setMaxMbInput(e.target.value)}
+              />
+              <span className="text-small text-muted">MB</span>
+            </div>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-sunken)', padding: '4px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
             <span className="text-small text-muted" style={{ fontWeight: 600 }}>Sort Products:</span>
             <select 

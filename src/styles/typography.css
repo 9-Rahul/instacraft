@@ -217,7 +217,7 @@ p {
 }
 
 a {
-  color: var(--primary);
+  color: green;
   text-decoration: none;
   transition: color var(--transition-fast);
 }

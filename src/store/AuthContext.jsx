@@ -4,7 +4,11 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
-const AuthContext = createContext();
+const AuthContext = createContext({
+  user: null,
+  isAdmin: false,
+  loading: true,
+});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -12,22 +16,47 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 🛡️ Check for Internal Admin Session first
-    const internalSession = typeof window !== 'undefined' ? localStorage.getItem('ishta_admin_session') : null;
-    if (internalSession) {
-      const parsed = JSON.parse(internalSession);
-      // 🔥 RE-ATTACH THE MOCK FUNCTION (Lost during stringify)
-      if (parsed.uid === 'internal-admin-001') {
-        parsed.getIdToken = async () => 'INTERNAL_ADMIN_TOKEN_SECURE_BYPASS_2026';
+    const handleInternalSession = () => {
+      const internalSession =
+        typeof window !== "undefined"
+          ? localStorage.getItem("ishta_admin_session")
+          : null;
+      if (internalSession) {
+        const parsed = JSON.parse(internalSession);
+        // 🔥 RE-ATTACH THE MOCK FUNCTION (Lost during stringify)
+        if (parsed.uid === "internal-admin-001") {
+          parsed.getIdToken = async () =>
+            "INTERNAL_ADMIN_TOKEN_SECURE_BYPASS_2026";
+        }
+        setUser(parsed);
+        setIsAdmin(true);
+        setLoading(false);
+      } else {
+        // If session was cleared but user state was internal admin, clear it
+        setUser((prevUser) =>
+          prevUser?.uid === "internal-admin-001" ? null : prevUser,
+        );
+        setIsAdmin(false);
       }
-      setUser(parsed);
-      setIsAdmin(true);
-      setLoading(false);
+    };
+
+    // Run on mount
+    handleInternalSession();
+
+    // Listen for custom event from login/logout
+    if (typeof window !== "undefined") {
+      window.addEventListener(
+        "ishta_admin_session_changed",
+        handleInternalSession,
+      );
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       // If we have an internal session, it takes precedence for Admin
-      if (typeof window !== 'undefined' && localStorage.getItem('ishta_admin_session')) {
+      if (
+        typeof window !== "undefined" &&
+        localStorage.getItem("ishta_admin_session")
+      ) {
         setLoading(false);
         return;
       }
@@ -40,9 +69,9 @@ export const AuthProvider = ({ children }) => {
           const idToken = await firebaseUser.getIdToken();
           const res = await fetch("/api/customers/sync", {
             method: "POST",
-            headers: { 
+            headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${idToken}`
+              Authorization: `Bearer ${idToken}`,
             },
             body: JSON.stringify({
               firebaseUid: firebaseUser.uid,
@@ -64,12 +93,20 @@ export const AuthProvider = ({ children }) => {
       } else {
         setIsAdmin(false);
       }
-      
+
       // Mark loading as false ONLY after role validation is complete
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (typeof window !== "undefined") {
+        window.removeEventListener(
+          "ishta_admin_session_changed",
+          handleInternalSession,
+        );
+      }
+    };
   }, []);
 
   return (

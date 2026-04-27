@@ -16,8 +16,11 @@ const delay = (ms = 0) => new Promise((r) => setTimeout(r, ms));
 
 export async function getProducts(forceFresh = false, page = 1, limit = 1000) {
   const url = `/api/products?page=${page}&limit=${limit}${forceFresh ? "&fresh=1" : ""}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Failed to fetch products");
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.details || errorData.error || "Failed to fetch products");
+  }
   return res.json();
 }
 
@@ -44,7 +47,7 @@ export async function deleteProduct(id, idToken) {
 }
 
 export async function getProductById(id) {
-  const res = await fetch(`/api/products/${id}`);
+  const res = await fetch(`/api/products/${id}`, { cache: "no-store" });
   if (!res.ok) return null;
   return res.json();
 }
@@ -218,7 +221,7 @@ export async function updateSiteContent(content, idToken) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${idToken}`,
     },
-    body: JSON.stringify(content),
+    body: JSON.stringify({ siteContent: content }),
   });
   if (!res.ok) throw new Error("Failed to update site content");
   return res.json();

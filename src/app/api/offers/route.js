@@ -77,8 +77,8 @@ export async function POST(request) {
         updatedAt: o.updated_at
       }));
     } else {
-      if (!body.title || !body.description || !body.id) {
-        return NextResponse.json({ error: "Missing required fields (title, description, id)" }, { status: 400 });
+      if (!body.title || !body.id) {
+        return NextResponse.json({ error: "Missing required fields (title, id)" }, { status: 400 });
       }
 
       const customId = body.id;
@@ -95,7 +95,7 @@ export async function POST(request) {
       const active = body.active !== false ? 1 : 0;
       const featured = body.featured ? 1 : 0;
 
-      const [insertResult] = await db.query(
+      const insertResult = await db.query(
         `INSERT INTO offers (
           custom_id, title, description, discount, type, category, icon, 
           image, bg_color, text_color, valid_until, active, featured, created_at, updated_at

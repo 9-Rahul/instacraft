@@ -1,4 +1,4 @@
-﻿'use client';
+"use client";
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -22,9 +22,15 @@ export default function AboutContent() {
     fetchContent();
   }, []);
 
-  if (!content) return <div className="section" style={{ minHeight: '80vh' }}></div>;
+  if (!content)
+    return <div className="section" style={{ minHeight: "80vh" }}></div>;
 
-  const { hero = {}, mission = {}, artisans = { list: [] }, values = { list: [] } } = content;
+  const {
+    hero = { overline: "", title: "", description: "" },
+    mission = { overline: "", title: "", text1: "", text2: "", text3: "", stats: [] },
+    artisans = { overline: "", title: "", description: "", list: [] },
+    values = { overline: "", title: "", list: [] },
+  } = content || {};
 
   // Icon mapping for values
   const iconMap = {
@@ -39,27 +45,34 @@ export default function AboutContent() {
       {/* Hero */}
       <section
         className="section"
-        style={{ 
+        style={{
           position: "relative",
-          background: hero.image ? `url(${hero.image}) center/cover no-repeat` : "var(--primary-dark)", 
+          background: hero.image
+            ? `url(${hero.image}) center/cover no-repeat`
+            : "var(--primary-dark)",
           textAlign: "center",
           minHeight: "40vh",
           display: "flex",
           alignItems: "center",
           color: "#fff",
-          overflow: "hidden"
+          overflow: "hidden",
         }}
         aria-labelledby="about-title"
       >
         {hero.image && (
-          <div style={{ 
-            position: "absolute", 
-            inset: 0, 
-            background: "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.7))",
-            zIndex: 1 
-          }} />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.7))",
+              zIndex: 1,
+            }}
+          />
         )}
-        <div className="container-sm" style={{ position: "relative", zIndex: 2 }}>
+        <div
+          className="container-sm"
+          style={{ position: "relative", zIndex: 2 }}
+        >
           <span className="overline" style={{ color: "var(--secondary)" }}>
             {hero.overline}
           </span>
@@ -76,10 +89,14 @@ export default function AboutContent() {
               fontSize: "var(--fs-18)",
               lineHeight: "var(--lh-loose)",
               maxWidth: "800px",
-              margin: "0 auto"
+              margin: "0 auto",
             }}
           >
-            Ishta Crafts is a premier artisan marketplace dedicated to bridging the gap between master Indian craft traditions and global heritage enthusiasts. Our mission is to ensure every handcrafted piece tells a story while supporting a sustainable future for our artisan collective.
+            Ishta Crafts is a premier artisan marketplace dedicated to bridging
+            the gap between master Indian craft traditions and global heritage
+            enthusiasts. Our mission is to ensure every handcrafted piece tells
+            a story while supporting a sustainable future for our artisan
+            collective.
           </p>
         </div>
       </section>
@@ -89,20 +106,48 @@ export default function AboutContent() {
         <div className="container">
           <div className="responsive-grid-2" style={{ alignItems: "center" }}>
             {mission.image ? (
-              <Image
-                src={mission.image}
-                alt={mission.title ? `Our Mission: ${mission.title}` : "Handicraft Artisan at work - Ishta Crafts Mission"}
-                width={600}
-                height={800}
-                priority
-                style={{
-                  borderRadius: "var(--border-radius-xl)",
-                  width: "100%",
-                  height: "auto",
-                }}
-              />
+              <div style={{ 
+                overflow: "hidden", 
+                borderRadius: "var(--border-radius-xl)", 
+                maxHeight: "520px",
+                boxShadow: "var(--shadow-lg)"
+              }}>
+                <Image
+                  src={mission.image}
+                  alt={
+                    mission.title
+                      ? `Our Mission: ${mission.title}`
+                      : "Handicraft Artisan at work - Ishta Crafts Mission"
+                  }
+                  width={600}
+                  height={800}
+                  priority
+                  style={{
+                    width: "100%",
+                    height: "520px",
+                    objectFit: "cover",
+                    display: "block"
+                  }}
+                />
+              </div>
             ) : (
-              <div style={{ paddingBottom: "133%", background: "var(--surface)", borderRadius: "var(--border-radius-xl)" }} />
+
+              <div
+                style={{
+                  width: "100%",
+                  aspectRatio: "3/4",
+                  background: "var(--surface-sunken)",
+                  borderRadius: "var(--border-radius-xl)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--text-muted)",
+                  fontSize: "var(--fs-14)",
+                  border: "2px dashed var(--border-color)"
+                }}
+              >
+                Mission Image Placeholder
+              </div>
             )}
             <div>
               <span className="overline">{mission.overline}</span>
@@ -127,23 +172,21 @@ export default function AboutContent() {
               >
                 {mission.text3}
               </p>
-              <div className="grid grid-3" style={{ gap: "var(--space-4)" }}>
+              <div className="mission-stats-grid">
                 {(mission.stats || []).map((stat) => (
-                  <div key={stat.label} className="card card-sm">
-                    <div className="card-body" style={{ textAlign: "center" }}>
-                      <span
-                        style={{
-                          fontFamily: "var(--font-heading)",
-                          fontSize: "var(--fs-28)",
-                          fontWeight: 700,
-                          color: "var(--primary)",
-                          display: "block",
-                        }}
-                      >
-                        {stat.number}
-                      </span>
-                      <span className="text-muted">{stat.label}</span>
-                    </div>
+                   <div key={stat.label} className="stat-premium-card">
+                    <span
+                      style={{
+                        fontFamily: "var(--font-heading)",
+                        fontSize: "var(--fs-28)",
+                        fontWeight: 700,
+                        color: "var(--primary)",
+                        display: "block",
+                      }}
+                    >
+                      {stat.number}
+                    </span>
+                    <span className="text-muted">{stat.label}</span>
                   </div>
                 ))}
               </div>
@@ -164,50 +207,45 @@ export default function AboutContent() {
             <h2 id="artisans-title" className="heading-lg">
               {artisans.title}
             </h2>
-            <p className="text-body">
-              {artisans.description}
-            </p>
+            <p className="text-body">{artisans.description}</p>
           </div>
           <div className="grid grid-3">
             {(artisans.list || []).map((a) => (
-              <article key={a.name} className="card">
+              <article key={a.name} className="about-premium-card">
                 {a.avatar ? (
-                  <Image
-                    src={a.avatar}
-                    alt={`${a.name} - Master Craftsman specialized in ${a.craft}`}
-                    width={400}
-                    height={300}
+                  <div style={{ overflow: "hidden" }}>
+                    <Image
+                      src={a.avatar}
+                      alt={`${a.name} - Master Craftsman specialized in ${a.craft}`}
+                      width={400}
+                      height={300}
+                      style={{
+                        width: "100%",
+                        aspectRatio: "4/3",
+                        objectFit: "cover",
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div
                     style={{
                       width: "100%",
                       aspectRatio: "4/3",
-                      objectFit: "cover",
+                      background: "var(--surface)",
                     }}
                   />
-                ) : (
-                  <div style={{ width: "100%", aspectRatio: "4/3", background: "var(--surface)" }} />
                 )}
                 <div className="card-body">
                   <span className="overline mb-2">{a.craft}</span>
                   <h3 className="heading-sm">{a.name}</h3>
-                  <p
-                    style={{
-                      fontSize: "var(--fs-13)",
-                      color: "var(--secondary-dark)",
-                      marginBottom: "var(--space-3)",
-                    }}
-                  >
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                      <MapPin size={14} />
-                      {a.location}
-                    </span>
-                  </p>
+                  {/* location removed */}
                   <p
                     className="text-body-sm"
                     style={{ lineHeight: "var(--lh-loose)" }}
                   >
                     {a.story}
                   </p>
-                  <div className="mt-4">
+                  <div className="mt-auto pt-4">
                     <span className="badge badge-secondary">
                       {a.yearsActive} years of craft
                     </span>
@@ -230,18 +268,11 @@ export default function AboutContent() {
           </div>
           <div className="grid grid-4">
             {(values.list || []).map((v) => (
-              <div key={v.title} className="card">
+              <div key={v.title} className="about-premium-card">
                 <div className="card-body" style={{ textAlign: "center" }}>
-                  <span
-                    style={{
-                      fontSize: 36,
-                      display: "block",
-                      marginBottom: "var(--space-4)",
-                    }}
-                    aria-hidden="true"
-                  >
+                  <div className="value-icon-wrapper" aria-hidden="true">
                     {iconMap[v.icon]}
-                  </span>
+                  </div>
                   <h3 className="heading-sm mb-2">{v.title}</h3>
                   <p className="text-body-sm">{v.desc}</p>
                 </div>

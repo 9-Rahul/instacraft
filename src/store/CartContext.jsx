@@ -60,74 +60,34 @@ function cartReducer(state, action) {
 export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [] });
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const { user } = useAuth();
-  const dbHydrated = useRef(false);
+  const hydrated = useRef(false);
 
-  // When user logs in → fetch cart from DB
-  // When user logs out → clear cart from memory
+  // 1. Initially load from Local Storage on mount
   useEffect(() => {
-    if (!user) {
-      dispatch({ type: "CLEAR_CART" });
-      dbHydrated.current = false;
-      return;
+    if (hydrated.current) return;
+    hydrated.current = true;
+    try {
+      const saved = localStorage.getItem("ishta_cart");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          dispatch({ type: "HYDRATE", items: parsed });
+        }
+      }
+    } catch {
+      // ignore corrupt data
     }
+  }, []);
 
-    let isMounted = true;
-    const fetchDBState = async () => {
-      try {
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) return;
-
-        const res = await fetch("/api/profile/state", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-
-        if (!res.ok) throw new Error(`Server returned ${res.status}`);
-
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          throw new Error("Received non-JSON response from server");
-        }
-
-        const data = await res.json();
-
-        if (data.success && Array.isArray(data.cart) && isMounted) {
-          dispatch({ type: "HYDRATE", items: data.cart });
-          dbHydrated.current = true;
-        }
-      } catch (err) {
-        console.error("Failed to sync cart from DB:", err);
-      }
-    };
-
-    fetchDBState();
-    return () => { isMounted = false; };
-  }, [user]);
-
-  // Sync cart changes to DB only (no localStorage)
+  // 2. Persist to localStorage ALWAYS on change
   useEffect(() => {
-    if (!user || !dbHydrated.current) return;
-
-    const pushToDB = async () => {
-      try {
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) return;
-        await fetch("/api/profile/state", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({ cart: state.items })
-        });
-      } catch (e) {
-        console.error("Failed to persist cart to DB:", e);
-      }
-    };
-
-    const timeoutId = setTimeout(() => pushToDB(), 1000); // 1s debounce
-    return () => clearTimeout(timeoutId);
-  }, [state.items, user]);
+    if (!hydrated.current) return; // wait until first mount finishes
+    try {
+      localStorage.setItem("ishta_cart", JSON.stringify(state.items));
+    } catch {
+      // ignore private browsing or storage full limit
+    }
+  }, [state.items]);
 
   const addItem = (item, qty = 1) => dispatch({ type: "ADD_ITEM", item, qty });
   const removeItem = (id) => dispatch({ type: "REMOVE_ITEM", id });

@@ -3,6 +3,8 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import db from "@/lib/db";
 import { revalidateTag } from "next/cache";
 import { normalizeHeroSlide } from "@/lib/normalize";
+import { unlink } from "fs/promises";
+import path from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -47,13 +49,21 @@ export async function PUT(request) {
       return NextResponse.json({ error: "Expected an array of hero slides" }, { status: 400 });
     }
 
+    // ── MEDIA CLEANUP ──
+    // 1. Get all unique local videos/posters before update
+    const oldSlides = await db.query("SELECT video, poster FROM hero_slides");
+    const oldMedia = new Set();
+    oldSlides.forEach(s => {
+      if (s.video?.startsWith('/videos/')) oldMedia.add(s.video);
+      if (s.poster?.startsWith('/images/')) oldMedia.add(s.poster);
+    });
+
     // Delete all → insert new batch
-    const insertedIds = await db.transaction(async (conn) => {
+    await db.transaction(async (conn) => {
       await conn.execute("DELETE FROM hero_slides");
-      const ids = [];
       for (let idx = 0; idx < body.length; idx++) {
         const h = body[idx];
-        const [result] = await conn.execute(
+        await conn.execute(
           `INSERT INTO hero_slides (
             custom_id, title, subtitle, description, badge, video, poster, 
             product_slug, active, sort_order, created_at, updated_at
@@ -71,10 +81,36 @@ export async function PUT(request) {
             parseInt(h.order) || idx
           ]
         );
-        ids.push(result.insertId);
       }
-      return ids;
     });
+
+    // 2. Identify media that is NO LONGER used in the hero_slides table
+    const newMedia = new Set();
+    body.forEach(h => {
+      if (h.video?.startsWith('/videos/')) newMedia.add(h.video);
+      if (h.poster?.startsWith('/images/')) newMedia.add(h.poster);
+    });
+
+    const orphanedMedia = Array.from(oldMedia).filter(m => !newMedia.has(m));
+
+    // 3. For each orphaned file, check if it's used in OTHER tables before deleting
+    for (const mediaUrl of orphanedMedia) {
+      try {
+        // Check if used in products, promo banners, or other config
+        const [pbUsage] = await db.query("SELECT COUNT(*) as count FROM promo_banners WHERE image = ?", [mediaUrl]);
+        const [piUsage] = await db.query("SELECT COUNT(*) as count FROM product_images WHERE url = ?", [mediaUrl]);
+        
+        const totalUsage = (pbUsage?.count || 0) + (piUsage?.count || 0);
+        
+        if (totalUsage === 0) {
+          const filePath = path.join(process.cwd(), 'public', mediaUrl);
+          await unlink(filePath).catch(err => console.warn(`Could not delete orphaned file ${filePath}:`, err.message));
+          console.log(`[Cleanup] Deleted unused hero media: ${mediaUrl}`);
+        }
+      } catch (cleanupErr) {
+        console.error(`[Cleanup] Error during media cleanup for ${mediaUrl}:`, cleanupErr);
+      }
+    }
 
     const insertedRows = await db.query("SELECT * FROM hero_slides ORDER BY sort_order ASC");
     const inserted = insertedRows.map(s => ({

@@ -37,78 +37,87 @@ export default function DealsPage() {
   }
 
   return (
-    <div className="section">
+    <div className="section" style={{ background: 'linear-gradient(to bottom, #fff, var(--surface-sunken))' }}>
       <div className="container">
         {/* Header */}
-        <div className="section-header mb-10">
-          <span className="overline">Limited Time</span>
-          <h1 className="heading-lg">Deals &amp; Offers</h1>
-          <p className="text-body">Handpicked deals on authentic Indian handicrafts</p>
+        <div className="section-header mb-16">
+          <span className="overline" style={{ color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.2em' }}>Limited Time</span>
+          <h1 className="heading-xl" style={{ marginBottom: 'var(--space-4)' }}>Handcrafted Deals</h1>
+          <p className="text-body" style={{ fontSize: 'var(--fs-18)', maxWidth: '600px', marginInline: 'auto' }}>
+            Exclusive offers on our finest authentic Indian handicrafts. Grab them before they're gone.
+          </p>
         </div>
 
         {/* Active offers */}
-        <h2 className="heading-md mb-6">Active Offers</h2>
-        <div className="deals-grid" style={{ marginBottom: 'var(--space-12)' }}>
-          {active.length === 0 && (
-            <p className="text-muted">No offer available</p>
-          )}
-          {active.map(offer => (
-            <div
-              key={offer.id}
-              className="offer-card"
-              style={{ background: offer.bgColor }}
-              role="article"
-            >
-              {/* Text content */}
-              <div className="offer-card-body">
-                <span
-                  className="badge"
-                  style={{
-                    background: offer.textColor,
-                    color: offer.bgColor,
-                    marginBottom: 'var(--space-3)',
-                    display: 'inline-block',
-                  }}
+        {active.length > 0 && (
+          <div className="mb-20">
+            <h2 className="heading-md mb-8" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              Active Offers 
+              <span style={{ width: '8px', height: '8px', background: '#22c55e', borderRadius: '50%', display: 'inline-block' }}></span>
+            </h2>
+            <div className="deals-grid">
+              {active.map(offer => (
+                <div
+                  key={offer.id}
+                  className="offer-card"
+                  style={{ backgroundColor: offer.bgColor }}
+                  role="article"
                 >
-                  {offer.type === 'percentage'
-                    ? `${offer.discount}% OFF`
-                    : offer.type === 'flat'
-                    ? `₹${offer.discount} OFF`
-                    : 'FREE SHIPPING'}
-                </span>
-                <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--fs-22)', color: offer.textColor, fontWeight: 700, marginBottom: 'var(--space-2)' }}>
-                  {offer.title}
-                </h3>
-                <p style={{ color: offer.textColor, opacity: 0.8, fontSize: 'var(--fs-15)', marginBottom: 'var(--space-2)' }}>
-                  {offer.description}
-                </p>
-                <p style={{ color: offer.textColor, opacity: 0.6, fontSize: 'var(--fs-13)', marginBottom: 'var(--space-5)' }}>
-                  Valid until {new Date(offer.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
-                <Link
-                  href={offer.category ? `/shop/${offer.category}` : '/shop'}
-                  className="btn btn-sm"
-                  style={{ background: offer.textColor, color: offer.bgColor, border: 'none' }}
-                >
-                  Shop Now →
-                </Link>
-              </div>
+                  <div className="offer-card-body">
+                    <span
+                      className="offer-card-badge"
+                      style={{
+                        background: offer.textColor,
+                        color: offer.bgColor,
+                      }}
+                    >
+                      {offer.type === 'percentage'
+                        ? `${offer.discount}% OFF`
+                        : offer.type === 'flat'
+                        ? `₹${offer.discount} OFF`
+                        : 'FREE SHIPPING'}
+                    </span>
+                    <h3 className="offer-card-title" style={{ color: offer.textColor }}>
+                      {offer.title}
+                    </h3>
+                    <p className="offer-card-desc" style={{ color: offer.textColor }}>
+                      {offer.description}
+                    </p>
+                    <div className="offer-card-expiry" style={{ color: offer.textColor, opacity: 0.8 }}>
+                      Valid until {new Date(offer.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                    <Link
+                      href={offer.category ? `/shop/${offer.category}` : '/shop'}
+                      className="offer-card-btn"
+                      style={{ background: offer.textColor, color: offer.bgColor }}
+                    >
+                      Shop Collection
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </Link>
+                  </div>
 
-              {/* Image */}
-              <img
-                src={offer.image}
-                alt={offer.title}
-                className="offer-card-img"
-                loading="lazy"
-              />
+                  <img
+                    src={offer.image}
+                    alt={offer.title}
+                    className="offer-card-img"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {active.length === 0 && (
+          <div className="text-center py-20 bg-surface rounded-xl border border-dashed border-border-color mb-20">
+             <p className="text-muted" style={{ fontSize: 'var(--fs-18)' }}>No active offers at the moment. Check back soon!</p>
+          </div>
+        )}
 
         {/* Expired offers */}
         {expired.length > 0 && (
-          <>
-            <h2 className="heading-md mb-6" style={{ color: 'var(--text-muted)' }}>Past Offers</h2>
+          <div className="mt-20 pt-16 border-top">
+            <h2 className="heading-md mb-8" style={{ color: 'var(--text-muted)' }}>Previous Offers</h2>
             <div className="deals-grid">
               {expired.map(offer => (
                 <div
@@ -121,18 +130,21 @@ export default function DealsPage() {
                     className="offer-expired-img"
                     loading="lazy"
                   />
-                  <div>
-                    <span className="badge badge-neutral mb-2">Expired</span>
-                    <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 'var(--fs-18)', color: 'var(--text-dark)' }}>{offer.title}</h3>
-                    <p className="text-muted mt-1">{offer.description}</p>
+                  <div className="offer-expired-body">
+                    <h3>{offer.title}</h3>
+                    <p>{offer.description}</p>
+                    <div className="mt-2" style={{ fontSize: 'var(--fs-12)', fontWeight: 600, color: 'var(--text-hint)' }}>
+                      Ended on {new Date(offer.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
   );
 }
+
 

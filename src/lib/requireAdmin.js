@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebase-admin";
 
-export async function requireAdmin(req) {
+export async function verifyAuth(req) {
   const authHeader = req.headers.get("Authorization");
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -23,15 +23,19 @@ export async function requireAdmin(req) {
     };
   }
 
-  let decodedToken;
-
   try {
-    decodedToken = await adminAuth.verifyIdToken(token);
+    const decodedToken = await adminAuth.verifyIdToken(token);
+    return { decodedToken };
   } catch (e) {
     return {
       error: NextResponse.json({ error: "Invalid Token" }, { status: 401 }),
     };
   }
+}
+
+export async function requireAdmin(req) {
+  const { decodedToken, error } = await verifyAuth(req);
+  if (error) return { error };
 
   const currEmail = decodedToken.email?.toLowerCase();
 

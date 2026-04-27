@@ -1,22 +1,30 @@
 // src/lib/db.js
 import mysql from 'mysql2/promise';
 
+const POOL_CONFIG = {
+  uri: process.env.DATABASE_URL || '',
+  waitForConnections: true,
+  // Keep this LOW — XAMPP defaults to 151 max_connections total.
+  // 3 is enough for local dev; Next.js queues extra queries.
+  connectionLimit: process.env.NODE_ENV === 'production' ? 10 : 3,
+  queueLimit: 50,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 30000,
+  connectTimeout: 10000,
+};
+
 let pool;
-try {
-  if (!process.env.DATABASE_URL) {
-    console.warn('⚠️ DATABASE_URL is missing! Database features will fail.');
+
+if (process.env.NODE_ENV === 'production') {
+  // Production: create a new pool per process (normal)
+  pool = mysql.createPool(POOL_CONFIG);
+} else {
+  // Development: reuse the same pool across HMR reloads.
+  // Without this, each hot reload creates a NEW pool, burning through connections.
+  if (!global._mysqlPool) {
+    global._mysqlPool = mysql.createPool(POOL_CONFIG);
   }
-  
-  pool = mysql.createPool({
-    uri: process.env.DATABASE_URL || '',
-    waitForConnections: true,
-    connectionLimit: 10, // More conservative for VPS memory
-    queueLimit: 0,
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 10000,
-  });
-} catch (error) {
-  console.error('❌ Database Pool Error:', error.message);
+  pool = global._mysqlPool;
 }
 
 /**

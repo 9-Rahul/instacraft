@@ -17,6 +17,9 @@ import {
   ShoppingCart,
   Briefcase,
   LogOut,
+  Megaphone,
+  Layers,
+  Image as ImageIcon
 } from "lucide-react";
 import { logout } from "@/lib/auth";
 import { useRouter } from "next/navigation";
@@ -30,6 +33,9 @@ const navItems = [
   { href: "/admin/orders", label: "Orders", icon: <ShoppingCart size={20} /> },
   { href: "/admin/products", label: "Products", icon: <Palette size={20} /> },
   { href: "/admin/hero-slider", label: "Hero Slider", icon: <Monitor size={20} /> },
+  { href: "/admin/promo-banners", label: "Promo Banners", icon: <Layers size={20} /> },
+  { href: "/admin/sale", label: "Sale Banner", icon: <Megaphone size={20} /> },
+  { href: "/admin/custom-gallery", label: "Custom Gallery", icon: <ImageIcon size={20} /> },
   { href: "/admin/offers", label: "Offers", icon: <Tag size={20} /> },
   { href: "/admin/inventory", label: "Inventory", icon: <Package size={20} /> },
   { href: "/admin/coupons", label: "Coupons", icon: <Ticket size={20} /> },

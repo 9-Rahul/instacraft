@@ -93,7 +93,7 @@ export async function POST(request) {
       const validUntil = body.validUntil ? new Date(body.validUntil) : null;
       const active = body.active !== false ? 1 : 0;
 
-      const [insertResult] = await db.query(
+      const insertResult = await db.query(
         `INSERT INTO coupons (
           custom_id, code, description, discount, type, min_order, 
           max_uses, valid_until, active, created_at, updated_at

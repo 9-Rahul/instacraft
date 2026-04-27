@@ -50,8 +50,10 @@ export default function LoginPage() {
       const userCredential = await login(email, password);
       
       // 🛡️ INTERNAL ADMIN PERSISTENCE
-      if (email.toLowerCase() === 'admin@ishtacrafts.in' && password === 'ishta@crafts') {
+      // We check the UID returned by our secure bypass in src/lib/auth.js
+      if (userCredential.user.uid === 'internal-admin-001') {
         localStorage.setItem('ishta_admin_session', JSON.stringify(userCredential.user));
+        window.dispatchEvent(new Event('ishta_admin_session_changed'));
       }
 
       // Security: Enforce Email Verification

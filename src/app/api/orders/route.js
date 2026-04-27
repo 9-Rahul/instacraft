@@ -1,37 +1,28 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
+import { verifyAuth } from "@/lib/requireAdmin";
 import db from "@/lib/db";
 import { normalizeOrder } from "@/lib/normalize";
 
 export async function GET(request) {
   try {
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    let decodedToken;
-    try {
-      decodedToken = await adminAuth.verifyIdToken(authHeader.split("Bearer ")[1]);
-    } catch {
-      return NextResponse.json({ error: "Invalid Token" }, { status: 401 });
-    }
+    const { decodedToken, error } = await verifyAuth(request);
+    if (error) return error;
 
     const ordersRaw = await db.query(
-      "SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC", 
-      [decodedToken.uid]
+      "SELECT * FROM orders WHERE customer_id = ? ORDER BY created_at DESC",
+      [decodedToken.uid],
     );
 
     if (ordersRaw.length === 0) {
       return NextResponse.json({ success: true, orders: [] }, { status: 200 });
     }
 
-    const orderIds = ordersRaw.map(o => o.id);
+    const orderIds = ordersRaw.map((o) => o.id);
     const itemsRaw = await db.query(
-      `SELECT * FROM order_items WHERE order_id IN (${orderIds.join(",")})`
+      `SELECT * FROM order_items WHERE order_id IN (${orderIds.join(",")})`,
     );
 
-    const orders = ordersRaw.map(o => {
+    const orders = ordersRaw.map((o) => {
       const mapped = {
         ...o,
         customerId: o.customer_id,
@@ -59,10 +50,12 @@ export async function GET(request) {
         shippingPincode: o.shipping_pincode,
         createdAt: o.created_at,
         updatedAt: o.updated_at,
-        items: itemsRaw.filter(i => i.order_id === o.id).map(i => ({
-          ...i,
-          itemProductId: i.item_product_id
-        }))
+        items: itemsRaw
+          .filter((i) => i.order_id === o.id)
+          .map((i) => ({
+            ...i,
+            itemProductId: i.item_product_id,
+          })),
       };
       return normalizeOrder(mapped);
     });
@@ -70,6 +63,9 @@ export async function GET(request) {
     return NextResponse.json({ success: true, orders }, { status: 200 });
   } catch (error) {
     console.error("Customer Orders Fetch Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
   }
 }
