@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { adminAuth } from "@/lib/firebase-admin";
+import { verifyAuth } from "@/lib/requireAdmin";
 import db from "@/lib/db";
 
 export async function POST(request, { params }) {
@@ -7,15 +7,8 @@ export async function POST(request, { params }) {
     const { token } = await params;
 
     // 1. Auth check
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    try {
-      await adminAuth.verifyIdToken(authHeader.split("Bearer ")[1]);
-    } catch {
-      return NextResponse.json({ error: "Unauthorized: Invalid Token" }, { status: 401 });
-    }
+    const { error } = await verifyAuth(request);
+    if (error) return error;
 
     // 2. Verify the Razorpay Order ID exists in our DB
     const { razorpayOrderId } = await request.json();

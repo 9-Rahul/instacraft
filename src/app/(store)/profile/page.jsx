@@ -33,7 +33,7 @@ function ProfileContent() {
   useEffect(() => {
     const fetchOrderStats = async () => {
       try {
-        const token = await auth.currentUser?.getIdToken();
+        const token = await user?.getIdToken();
         if (!token) return;
         const res = await fetch('/api/orders', {
           headers: { 'Authorization': `Bearer ${token}` }

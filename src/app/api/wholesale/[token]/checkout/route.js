@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
-import { adminAuth } from "@/lib/firebase-admin";
+import { verifyAuth } from "@/lib/requireAdmin";
 import db from "@/lib/db";
 
 export async function POST(request, { params }) {
@@ -8,17 +8,8 @@ export async function POST(request, { params }) {
     const { token } = await params;
 
     // 1. Authenticate user
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized: Missing Token" }, { status: 401 });
-    }
-
-    let decodedToken;
-    try {
-      decodedToken = await adminAuth.verifyIdToken(authHeader.split("Bearer ")[1]);
-    } catch {
-      return NextResponse.json({ error: "Unauthorized: Invalid Token" }, { status: 401 });
-    }
+    const { decodedToken, error } = await verifyAuth(request);
+    if (error) return error;
     const customerId = decodedToken.uid;
 
     // 2. Parse body

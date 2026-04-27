@@ -31,18 +31,30 @@ export const signup = async (email, password) => {
 
 // 🔐 LOGIN
 export const login = async (email, password) => {
-  // 🛡️ INTERNAL ADMIN BYPASS
-  if (email.toLowerCase() === 'admin@ishtacrafts.in' && password === 'ishta@crafts') {
-    return {
-      user: {
-        uid: 'internal-admin-001',
-        email: 'Admin@ishtacrafts.in',
-        emailVerified: true,
-        displayName: 'Ishta Administrator',
-        getIdToken: async () => 'INTERNAL_ADMIN_TOKEN_SECURE_BYPASS_2026'
-      }
-    };
+  // 🛡️ SECURE ADMIN BYPASS (SERVER-SIDE)
+  try {
+    const verifyRes = await fetch("/api/auth/admin-verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const verifyData = await verifyRes.json();
+    
+    if (verifyData.isAdmin) {
+      return {
+        user: {
+          uid: 'internal-admin-001',
+          email: email,
+          emailVerified: true,
+          displayName: 'Ishta Administrator',
+          getIdToken: async () => 'INTERNAL_ADMIN_TOKEN_SECURE_BYPASS_2026'
+        }
+      };
+    }
+  } catch (e) {
+    console.error("Admin bypass check failed:", e);
   }
+
   return await signInWithEmailAndPassword(auth, email, password);
 };
 
@@ -86,6 +98,7 @@ export const requestOtp = async (phoneNumber) => {
 export const logout = async () => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem('ishta_admin_session');
+    window.dispatchEvent(new Event('ishta_admin_session_changed'));
   }
   return await signOut(auth);
 };

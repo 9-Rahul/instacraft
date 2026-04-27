@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from "@/lib/requireAdmin";
+import { getSiteConfig } from "@/lib/api-server";
 import { writeFile, mkdir, readdir, readFile } from 'fs/promises';
 import path from 'path';
 import { createHash } from 'crypto';
@@ -43,10 +44,13 @@ export async function POST(request) {
       return NextResponse.json({ error: "No file received." }, { status: 400 });
     }
 
-    // 1. Validate File Size (Max 5MB)
-    const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    // 1. Validate File Size (Dynamic limit from config)
+    const siteConfig = await getSiteConfig(true);
+    const maxMb = siteConfig?.maxUploadSize || 30;
+    const MAX_FILE_SIZE = maxMb * 1024 * 1024;
+
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "File exceeds 5MB limit." }, { status: 413 });
+      return NextResponse.json({ error: `File exceeds ${maxMb}MB limit set by admin.` }, { status: 413 });
     }
 
     // 2. Validate MIME Type and determine secure extension

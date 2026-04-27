@@ -87,7 +87,7 @@ export default function WholesaleCheckoutPage() {
 
       if (paymentMethod === "COD") {
         await completeOrder(data.order.codReference);
-        alert("Success! Your wholesale order has been placed via Cash on Delivery.");
+        alert("Success! Your wholesale order has been placed via Pay on Delivery.");
         router.push("/profile");
         return;
       }
@@ -228,7 +228,7 @@ export default function WholesaleCheckoutPage() {
                       <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid var(--primary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {paymentMethod === "COD" && <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "var(--primary)" }} />}
                       </div>
-                      <span style={{ fontWeight: 600 }}>Cash on Delivery (Pay at Doorstep)</span>
+                      <span style={{ fontWeight: 600 }}>Pay on Delivery (Pay at Doorstep)</span>
                     </div>
                   </div>
 
@@ -275,9 +275,7 @@ export default function WholesaleCheckoutPage() {
                 <span style={{ fontSize: "1rem" }}>Wholesale Total</span>
                 <span style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--primary)" }}>{formatPrice(grandTotal)}</span>
               </div>
-              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "var(--space-2)" }}>
-                ✅ Wholesale pricing applied. No coupons needed.
-              </p>
+
             </div>
 
           </div>

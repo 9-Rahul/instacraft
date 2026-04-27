@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from 'react';
 import { formatPrice } from '@/lib/utils';
-import { CheckCircle, Clock, Package, AlertCircle } from 'lucide-react';
+import { CheckCircle, Clock, Package, AlertCircle, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/store/AuthContext';
 import AdminPagination from '@/components/admin/AdminPagination';
 
@@ -218,7 +218,7 @@ export default function AdminOrdersPage() {
                       ))}
                       
                       {/* Coupon Info */}
-                      {order.coupon && (
+                      {order.coupon && order.coupon.discount > 0 && (
                         <div style={{ marginTop: 8, padding: '4px 8px', backgroundColor: 'var(--success-bg)', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '12px', color: 'var(--success-text)', fontWeight: 600 }}>
                           Coupon: {order.coupon.code} (-{formatPrice(order.coupon.discount)})
                         </div>
@@ -242,17 +242,27 @@ export default function AdminOrdersPage() {
                     <td style={{ padding: '16px' }}>
                       <div style={{ display: 'flex', gap: 8, flexDirection: 'column', maxWidth: 200 }}>
                         <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: 4 }}>
-                          Status: <span style={{ color: 'var(--primary)', marginLeft: 4 }}>{order.logistics?.status?.replace("_", " ") || 'Pending'}</span>
+                          Status: <span style={{ color: 'var(--primary)', marginLeft: 4 }}>
+                            {(() => {
+                              let s = order.logistics?.status?.replace("_", " ") || 'Pending';
+                              if (order.paymentMethod === 'Online') {
+                                if (order.logistics.status === 'Placed') s = 'Verify';
+                                if (order.logistics.status === 'Packed') s = 'Awaiting Dispatch';
+                                if (order.logistics.status === 'Dispatched') s = 'Transit';
+                              }
+                              return s;
+                            })()}
+                          </span>
                         </div>
                         
-                        {order.payment.status === 'Paid' ? (
+                        {order.paymentMethod === 'Online' ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                              {order.logistics.status === 'Placed' && (
                                <button 
                                  onClick={() => updateStatus(order._id, 'Packed')} 
                                  style={{ padding: '6px 12px', background: 'var(--primary)', color: 'white', borderRadius: 4, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}
                                >
-                                  [ ] Verify & Pack
+                                  [ ] Proceed and Verify
                                </button>
                              )}
                              {order.logistics.status === 'Packed' && (
@@ -260,40 +270,87 @@ export default function AdminOrdersPage() {
                                  onClick={() => updateStatus(order._id, 'Dispatched')} 
                                  style={{ padding: '6px 12px', background: 'var(--text-dark)', color: 'white', borderRadius: 4, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}
                                >
-                                  [ ] Dispatch Checkpoint
+                                  [ ] Dispatch
                                </button>
                              )}
-                             {['Dispatched', 'In_Transit'].includes(order.logistics.status) && (
-                               <div style={{ padding: '6px 12px', background: 'var(--surface-sunken)', border: '1px solid var(--border-medium)', color: 'var(--text-medium)', borderRadius: 4, fontSize: 13, textAlign: 'center', fontWeight: 500 }}>
-                                 Transit Active
-                               </div>
-                             )}
-                             {order.logistics.status === 'Delivered' && (
-                               <div style={{ padding: '6px 12px', background: 'var(--success-bg)', color: 'var(--success-text)', borderRadius: 4, fontSize: 13, textAlign: 'center', fontWeight: 500 }}>
-                                 Delivered
-                               </div>
-                             )}
-                             
+                             {['Dispatched', 'In_Transit', 'Delivered'].includes(order.logistics.status) && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  <div style={{ padding: '6px 12px', background: 'var(--surface-sunken)', border: '1px solid var(--border-medium)', color: 'var(--text-medium)', borderRadius: 4, fontSize: 13, textAlign: 'center', fontWeight: 500 }}>
+                                    {order.logistics.status === 'Delivered' ? 'Delivered' : 'Dispatched (Tracking via Shiprocket)'}
+                                  </div>
+
+                                  {order.logistics.awbCode && (
+                                    <div className="timeline-awb-box" style={{ marginTop: '4px', padding: '10px 12px', boxShadow: 'none', background: 'var(--surface-raised)' }}>
+                                      <div style={{ flex: 1 }}>
+                                        <p className="timeline-awb-label" style={{ fontSize: '9px', marginBottom: '2px' }}>Carrier Tracking ID</p>
+                                        <span className="timeline-awb-value" style={{ fontSize: '13px', display: 'block' }}>{order.logistics.awbCode}</span>
+                                      </div>
+                                      <a 
+                                        href={`https://shiprocket.co/tracking/${order.logistics.awbCode}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="timeline-track-link" 
+                                        style={{ padding: '4px 8px', fontSize: '11px', whiteSpace: 'nowrap' }}
+                                      >
+                                        Track <ExternalLink size={12} />
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                              {/* Display Timestamps securely fetched from DB */}
                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
                                {order.logistics.timestamps?.packedAt && <div>Packed: {new Date(order.logistics.timestamps.packedAt).toLocaleDateString()}</div>}
-                               {order.logistics.timestamps?.dispatchedAt && <div>Dispatched: {new Date(order.logistics.timestamps.dispatchedAt).toLocaleDateString()}</div>}
+                               {order.logistics.timestamps?.dispatchedAt && <div>Transited: {new Date(order.logistics.timestamps.dispatchedAt).toLocaleDateString()}</div>}
                              </div>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                              <AlertCircle size={14} style={{ display: 'inline', marginRight: 4, position: 'relative', top: -1 }} /> 
-                              Awaiting Ledger Auth
-                            </div>
-                            {order.paymentMethod === 'COD' && (
+                            {order.logistics.status === 'Placed' && (
                               <button 
-                                onClick={() => markAsPaid(order._id)}
-                                style={{ padding: '6px 12px', background: 'var(--success)', color: 'white', borderRadius: 4, fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer' }}
+                                onClick={() => updateStatus(order._id, 'Packed')} 
+                                style={{ padding: '6px 12px', background: 'var(--primary)', color: 'white', borderRadius: 4, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}
                               >
-                                Mark as Cash Received
+                                [ ] Verify & Pack
                               </button>
                             )}
+                            {order.logistics.status === 'Packed' && (
+                              <button 
+                                onClick={() => updateStatus(order._id, 'Dispatched')} 
+                                style={{ padding: '6px 12px', background: 'var(--text-dark)', color: 'white', borderRadius: 4, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                              >
+                                [ ] Dispatch
+                              </button>
+                            )}
+                            {['Dispatched', 'In_Transit', 'Delivered'].includes(order.logistics.status) && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div style={{ padding: '6px 12px', background: 'var(--surface-sunken)', border: '1px solid var(--border-medium)', color: 'var(--text-medium)', borderRadius: 4, fontSize: 13, textAlign: 'center', fontWeight: 500 }}>
+                                  {order.logistics.status === 'Delivered' ? 'Delivered' : 'Dispatched (Tracking via Shiprocket)'}
+                                </div>
+                                
+                                {order.logistics.awbCode && (
+                                  <div className="timeline-awb-box" style={{ marginTop: '4px', padding: '10px 12px', boxShadow: 'none', background: 'var(--surface-raised)' }}>
+                                    <div style={{ flex: 1 }}>
+                                      <p className="timeline-awb-label" style={{ fontSize: '9px', marginBottom: '2px' }}>Carrier Tracking ID</p>
+                                      <span className="timeline-awb-value" style={{ fontSize: '13px', display: 'block' }}>{order.logistics.awbCode}</span>
+                                    </div>
+                                    <a 
+                                      href={`https://shiprocket.co/tracking/${order.logistics.awbCode}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="timeline-track-link" 
+                                      style={{ padding: '4px 8px', fontSize: '11px', whiteSpace: 'nowrap' }}
+                                    >
+                                      Track <ExternalLink size={12} />
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                              {order.logistics.timestamps?.packedAt && <div>Packed: {new Date(order.logistics.timestamps.packedAt).toLocaleDateString()}</div>}
+                              {order.logistics.timestamps?.dispatchedAt && <div>Dispatched: {new Date(order.logistics.timestamps.dispatchedAt).toLocaleDateString()}</div>}
+                            </div>
                           </div>
                         )}
                       </div>

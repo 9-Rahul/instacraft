@@ -115,6 +115,7 @@
 
   /* ── Layout ── */
   --container-max: 1280px;
+  --container-xl: 1500px;
   --container-md: 960px;
   --container-sm: 640px;
   --navbar-height: 70px;

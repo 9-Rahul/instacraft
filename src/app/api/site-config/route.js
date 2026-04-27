@@ -16,6 +16,7 @@ async function getConfig() {
     promoBannerActive: config.promo_banner_active,
     shippingFee: config.shipping_fee,
     freeShippingThreshold: config.free_shipping_threshold,
+    maxUploadSize: config.max_upload_size,
     createdAt: config.created_at,
     updatedAt: config.updated_at
   };
@@ -34,6 +35,7 @@ export async function GET() {
         promoBannerActive: newConfig.promo_banner_active,
         shippingFee: newConfig.shipping_fee,
         freeShippingThreshold: newConfig.free_shipping_threshold,
+        maxUploadSize: newConfig.max_upload_size,
         createdAt: newConfig.created_at,
         updatedAt: newConfig.updated_at
       };
@@ -70,7 +72,8 @@ export async function PUT(request) {
           data.whatsapp || null,
           data.address || null,
           data.shippingFee != null ? parseFloat(data.shippingFee) : null,
-          data.freeShippingThreshold != null ? parseFloat(data.freeShippingThreshold) : null
+          data.freeShippingThreshold != null ? parseFloat(data.freeShippingThreshold) : null,
+          data.maxUploadSize != null ? parseFloat(data.maxUploadSize) : 30
         ]
       );
       const rows = await db.query("SELECT * FROM site_config WHERE id = ?", [result.insertId]);
@@ -119,6 +122,10 @@ export async function PUT(request) {
       if (data.freeShippingThreshold !== undefined) {
         fields.push("free_shipping_threshold = ?");
         values.push(parseFloat(data.freeShippingThreshold));
+      }
+      if (data.maxUploadSize !== undefined) {
+        fields.push("max_upload_size = ?");
+        values.push(parseFloat(data.maxUploadSize));
       }
 
       if (fields.length > 0) {

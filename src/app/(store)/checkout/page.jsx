@@ -2,15 +2,17 @@
 
 import { useCart } from "@/store/CartContext";
 import { formatPrice } from "@/lib/utils";
-import { ShieldCheck, Truck, CreditCard } from "lucide-react";
+import { ShieldCheck, Truck, CreditCard, Trash2, Banknote } from "lucide-react";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Script from "next/script";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/store/AuthContext";
 
 function CheckoutContent() {
+  const { user, loading: authLoading } = useAuth();
   const { items, subtotal, clearCart, removeItemBySlug } = useCart();
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("Online"); // 'Online' or 'COD'
@@ -31,13 +33,15 @@ function CheckoutContent() {
   const [shippingFee, setShippingFee] = useState(199);
   const [shippingThreshold, setShippingThreshold] = useState(1000);
 
-  // Load addresses and public config on mount
+  // Load addresses when auth resolves
   useEffect(() => {
     let isMounted = true;
+    if (authLoading) return; // Wait until auth finishes loading
+
     const fetchAddresses = async (token) => {
       try {
         const res = await fetch("/api/profile/addresses", {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok && isMounted) {
           const data = await res.json();
@@ -49,27 +53,35 @@ function CheckoutContent() {
         if (isMounted) setAddressesLoading(false);
       }
     };
-    
-    if (!authLoading && user) {
-      user.getIdToken().then(token => {
+
+    if (user) {
+      user.getIdToken().then((token) => {
         if (isMounted) fetchAddresses(token);
       });
-    } else if (!authLoading && !user) {
+    } else {
       if (isMounted) setAddressesLoading(false);
     }
 
-    // Fetch Shipping Config
-    fetch('/api/site-config/public')
-      .then(res => res.json())
-      .then(data => {
-        setShippingFee(data.shippingFee ?? 199);
-        if (isMounted) setShippingThreshold(data.freeShippingThreshold ?? 1000);
+    return () => {
+      isMounted = false;
+    };
+  }, [user, authLoading]);
+
+  // Fetch Shipping Config on mount
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/site-config/public")
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted) {
+          setShippingFee(data.shippingFee ?? 199);
+          setShippingThreshold(data.freeShippingThreshold ?? 1000);
+        }
       })
-      .catch(err => console.error("Could not load shipping config", err));
+      .catch((err) => console.error("Could not load shipping config", err));
 
     return () => {
       isMounted = false;
-      unsubscribe();
     };
   }, []);
 
@@ -82,6 +94,30 @@ function CheckoutContent() {
       pincode: addr.pincode,
     });
     setSaveNewAddress(false);
+  };
+
+  const handleDeleteAddress = async (e, addressId) => {
+    e.stopPropagation(); // Prevent selecting the address
+
+    if (!confirm("Are you sure you want to delete this address?")) return;
+
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/profile/addresses?id=${addressId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.ok) {
+        setSavedAddresses(prev => prev.filter(addr => (addr.id || addr._id) !== addressId));
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete address");
+      }
+    } catch (err) {
+      console.error("Delete address error:", err);
+      alert("An error occurred while deleting the address");
+    }
   };
 
   const [couponInput, setCouponInput] = useState("");
@@ -135,7 +171,10 @@ function CheckoutContent() {
     : 0;
 
   const applicableShipping = subtotal >= shippingThreshold ? 0 : shippingFee;
-  const finalTotal = Math.max(1, subtotal - discountAmount + applicableShipping);
+  const finalTotal = Math.max(
+    1,
+    subtotal - discountAmount + applicableShipping,
+  );
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
@@ -173,12 +212,16 @@ function CheckoutContent() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to initialize secure checkout");
+        const error = new Error(
+          data.error || "Failed to initialize secure checkout",
+        );
+        error.missingSlug = data.missingSlug;
+        throw error;
       }
 
       // 4. Handle Redirect vs Gateway
-      if (paymentMethod === 'COD') {
-        alert("Success! Your order has been placed via Cash on Delivery.");
+      if (paymentMethod === "COD") {
+        alert("Success! Your order has been placed via Pay on Delivery.");
         clearCart();
         router.push("/profile");
         return;
@@ -214,14 +257,25 @@ function CheckoutContent() {
       });
       razorpayInstance.open();
     } catch (error) {
-      // Silently remove stale/deleted products and auto-retry checkout
+      // Find specifically handled "missing product" error from server
+      const missingSlug = error.missingSlug;
       const notFoundMatch = error.message?.match(/Product not found: (.+)/);
-      if (notFoundMatch) {
-        removeItemBySlug(notFoundMatch[1]);
-        // Small delay to let cart state update, then retry
-        setTimeout(() => handlePlaceOrder(e), 300);
+      const slugToRemove =
+        missingSlug || (notFoundMatch ? notFoundMatch[1] : null);
+
+      if (slugToRemove) {
+        const itemToRemove = items.find((i) => i.slug === slugToRemove);
+        const productTitle = itemToRemove ? itemToRemove.title : slugToRemove;
+
+        alert(
+          `Sorry! "${productTitle}" is no longer available and has been removed from your cart. Please review your order and try again.`,
+        );
+        removeItemBySlug(slugToRemove);
+        // We stop loading here so the user can see the updated cart and decide how to proceed
+        setLoading(false);
         return;
       }
+
       console.error(error);
       alert(error.message);
     } finally {
@@ -288,34 +342,71 @@ function CheckoutContent() {
                 <form onSubmit={handlePlaceOrder}>
                   {savedAddresses.length > 0 && (
                     <div style={{ marginBottom: "var(--space-6)" }}>
-                      <p className="text-body-sm text-muted mb-3">Select a saved address:</p>
-                      <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+                      <p className="text-body-sm text-muted mb-3">
+                        Select a saved address:
+                      </p>
+                      <div style={{ display: "grid", gap: "var(--space-3)" }}>
                         {savedAddresses.map((addr, idx) => (
-                          <div 
-                            key={idx} 
+                          <div
+                            key={idx}
                             onClick={() => handleSelectAddress(addr)}
+                            className="card-hover-shadow"
                             style={{
                               padding: 'var(--space-3)',
-                              border: `1.5px solid ${shipping.address === addr.street ? 'var(--primary)' : 'var(--border)'}`,
-                              borderRadius: 'var(--border-radius)',
+                              border: '1px solid var(--border-color)',
+                              borderRadius: 'var(--border-radius-sm)',
                               cursor: 'pointer',
-                              backgroundColor: shipping.address === addr.street ? 'rgba(122, 31, 31, 0.06)' : 'transparent',
-                              transition: 'all 0.2s ease'
+                              position: 'relative',
+                              backgroundColor: shipping.pincode === addr.pincode && shipping.address === addr.street ? 'var(--primary-subtle)' : 'transparent',
+                              borderColor: shipping.pincode === addr.pincode && shipping.address === addr.street ? 'var(--primary)' : 'var(--border-color)',
                             }}
                           >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                              <strong style={{ fontSize: 'var(--fs-14)' }}>{addr.name}</strong>
-                              <span className="badge badge-secondary" style={{ fontSize: 10 }}>{addr.tag}</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                              <strong style={{ fontSize: 'var(--fs-14)' }}>
+                                {addr.name}
+                              </strong>
+                              <button
+                                onClick={(e) => handleDeleteAddress(e, addr.id || addr._id)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: 'var(--error, #ff4444)',
+                                  cursor: 'pointer',
+                                  padding: 4,
+                                  marginTop: -4,
+                                  marginRight: -4,
+                                  opacity: 0.6,
+                                  transition: 'opacity 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                                title="Delete Address"
+                              >
+                                <Trash2 size={16} />
+                              </button>
                             </div>
-                            <p className="text-muted" style={{ fontSize: 'var(--fs-13)', margin: 0, lineHeight: 1.4 }}>
-                              {addr.street}, {addr.city} - {addr.pincode}<br/>
+                            <p
+                              className="text-muted"
+                              style={{
+                                fontSize: "var(--fs-13)",
+                                margin: 0,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {addr.street}, {addr.city} - {addr.pincode}
+                              <br />
                               {addr.phone}
                             </p>
                           </div>
                         ))}
                       </div>
-                      <div className="divider" style={{ margin: "var(--space-6) 0 var(--space-4)" }} />
-                      <p className="text-body-sm text-muted mb-4">Or enter a new address:</p>
+                      <div
+                        className="divider"
+                        style={{ margin: "var(--space-6) 0 var(--space-4)" }}
+                      />
+                      <p className="text-body-sm text-muted mb-4">
+                        Or enter a new address:
+                      </p>
                     </div>
                   )}
 
@@ -407,15 +498,27 @@ function CheckoutContent() {
                       </div>
                     </div>
 
-                    <div className="form-group" style={{ marginTop: 'var(--space-2)' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                        <input 
-                          type="checkbox" 
-                          className="filter-checkbox" 
-                          checked={saveNewAddress} 
-                          onChange={(e) => setSaveNewAddress(e.target.checked)} 
+                    <div
+                      className="form-group"
+                      style={{ marginTop: "var(--space-2)" }}
+                    >
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          cursor: "pointer",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          className="filter-checkbox"
+                          checked={saveNewAddress}
+                          onChange={(e) => setSaveNewAddress(e.target.checked)}
                         />
-                        <span style={{ fontSize: 'var(--fs-14)' }}>Save this address for future orders</span>
+                        <span style={{ fontSize: "var(--fs-14)" }}>
+                          Save this address for future orders
+                        </span>
                       </label>
                     </div>
                   </div>
@@ -439,54 +542,124 @@ function CheckoutContent() {
                     </h2>
                   </div>
 
-                  <div style={{ display: 'grid', gap: 'var(--space-3)', marginBottom: 'var(--space-6)' }}>
-                    <div 
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "var(--space-3)",
+                      marginBottom: "var(--space-6)",
+                    }}
+                  >
+                    <div
                       onClick={() => setPaymentMethod("Online")}
                       style={{
-                        padding: 'var(--space-4)',
-                        border: `1.5px solid ${paymentMethod === 'Online' ? 'var(--primary)' : 'var(--border)'}`,
-                        borderRadius: 'var(--border-radius)',
-                        cursor: 'pointer',
-                        backgroundColor: paymentMethod === 'Online' ? 'rgba(122, 31, 31, 0.04)' : 'transparent',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12
+                        padding: "var(--space-4)",
+                        border: `1.5px solid ${paymentMethod === "Online" ? "var(--primary)" : "var(--border)"}`,
+                        borderRadius: "var(--border-radius)",
+                        cursor: "pointer",
+                        backgroundColor:
+                          paymentMethod === "Online"
+                            ? "rgba(122, 31, 31, 0.04)"
+                            : "transparent",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
                       }}
                     >
-                      <div style={{ 
-                        width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--primary)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                      }}>
-                        {paymentMethod === 'Online' && <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: 'var(--primary)' }} />}
+                      <div
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          border: "2px solid var(--primary)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {paymentMethod === "Online" && (
+                          <div
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: "50%",
+                              backgroundColor: "var(--primary)",
+                            }}
+                          />
+                        )}
                       </div>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: 'var(--fs-15)' }}>Online Payment</div>
-                        <div style={{ fontSize: 'var(--fs-13)', color: 'var(--text-muted)' }}>UPI, Cards, Netbanking (via Razorpay)</div>
+                        <div
+                          style={{ fontWeight: 600, fontSize: "var(--fs-15)", display: "flex", alignItems: "center", gap: "8px" }}
+                        >
+                          <CreditCard size={18} />
+                          Paid Online
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "var(--fs-13)",
+                            color: "var(--text-muted)",
+                            marginTop: "4px"
+                          }}
+                        >
+                          UPI, Cards, Netbanking (via Razorpay)
+                        </div>
                       </div>
                     </div>
 
-                    <div 
+                    <div
                       onClick={() => setPaymentMethod("COD")}
                       style={{
-                        padding: 'var(--space-4)',
-                        border: `1.5px solid ${paymentMethod === 'COD' ? 'var(--primary)' : 'var(--border)'}`,
-                        borderRadius: 'var(--border-radius)',
-                        cursor: 'pointer',
-                        backgroundColor: paymentMethod === 'COD' ? 'rgba(122, 31, 31, 0.04)' : 'transparent',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12
+                        padding: "var(--space-4)",
+                        border: `1.5px solid ${paymentMethod === "COD" ? "var(--primary)" : "var(--border)"}`,
+                        borderRadius: "var(--border-radius)",
+                        cursor: "pointer",
+                        backgroundColor:
+                          paymentMethod === "COD"
+                            ? "rgba(122, 31, 31, 0.04)"
+                            : "transparent",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
                       }}
                     >
-                      <div style={{ 
-                        width: 20, height: 20, borderRadius: '50%', border: '2px solid var(--primary)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                      }}>
-                        {paymentMethod === 'COD' && <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: 'var(--primary)' }} />}
+                      <div
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          border: "2px solid var(--primary)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        {paymentMethod === "COD" && (
+                          <div
+                            style={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: "50%",
+                              backgroundColor: "var(--primary)",
+                            }}
+                          />
+                        )}
                       </div>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: 'var(--fs-15)' }}>Cash on Delivery</div>
-                        <div style={{ fontSize: 'var(--fs-13)', color: 'var(--text-muted)' }}>Pay securely at your doorstep</div>
+                        <div
+                          style={{ fontWeight: 600, fontSize: "var(--fs-15)", display: "flex", alignItems: "center", gap: "8px" }}
+                        >
+                          <Banknote size={18} />
+                          Pay on Delivery
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "var(--fs-13)",
+                            color: "var(--text-muted)",
+                            marginTop: "4px"
+                          }}
+                        >
+                          Pay securely at your doorstep
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -501,7 +674,7 @@ function CheckoutContent() {
                     }}
                   >
                     <p className="text-muted" style={{ fontWeight: 500 }}>
-                      {paymentMethod === 'Online' 
+                      {paymentMethod === "Online"
                         ? "Razorpay Secure Checkout will verify and process your payment."
                         : "Your order will be placed immediately. Please keep cash ready at delivery."}
                     </p>
@@ -513,8 +686,10 @@ function CheckoutContent() {
                     disabled={loading}
                   >
                     {loading
-                      ? (paymentMethod === 'Online' ? "Initializing Gateway..." : "Placing Order...")
-                      : paymentMethod === 'Online' 
+                      ? paymentMethod === "Online"
+                        ? "Initializing Gateway..."
+                        : "Placing Order..."
+                      : paymentMethod === "Online"
                         ? `Proceed to Pay ${formatPrice(finalTotal)} via Razorpay`
                         : `Confirm COD Order (${formatPrice(finalTotal)})`}
                   </button>
@@ -650,7 +825,9 @@ function CheckoutContent() {
                   {applicableShipping === 0 ? (
                     <span style={{ color: "var(--success)" }}>FREE</span>
                   ) : (
-                    <span style={{ fontWeight: 500 }}>{formatPrice(applicableShipping)}</span>
+                    <span style={{ fontWeight: 500 }}>
+                      {formatPrice(applicableShipping)}
+                    </span>
                   )}
                 </div>
                 <div

@@ -19,6 +19,7 @@ export async function GET() {
       promoBannerActive: !!config.promo_banner_active,
       shippingFee: parseFloat(config.shipping_fee.toString()),
       freeShippingThreshold: parseFloat(config.free_shipping_threshold.toString()),
+      maxUploadSize: parseFloat((config.max_upload_size || 30).toString()),
       createdAt: config.created_at,
       updatedAt: config.updated_at
     };

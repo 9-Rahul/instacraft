@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { createContext, useContext, useReducer, useEffect, useRef } from "react";
 import { useAuth } from "./AuthContext";
@@ -28,98 +28,30 @@ function wishlistReducer(state, action) {
 
 export function WishlistProvider({ children }) {
   const [state, dispatch] = useReducer(wishlistReducer, { items: [] });
-  const { user } = useAuth();
-  const dbHydrated = useRef(false);
+  const hydrated = useRef(false);
 
-  // 1. Initially load from Local Storage (Fastest)
+  // 1. Initially load from Local Storage
   useEffect(() => {
+    if (hydrated.current) return;
+    hydrated.current = true;
     try {
       const saved = localStorage.getItem("ishta_wishlist");
-      if (saved) dispatch({ type: "HYDRATE", items: JSON.parse(saved) });
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          dispatch({ type: "HYDRATE", items: parsed });
+        }
+      }
     } catch {}
   }, []);
 
-  // 2. Fetch from DB if user authenticates
+  // 2. Persist to localStorage ALWAYS on change
   useEffect(() => {
-    if (!user) {
-      dbHydrated.current = false;
-      return;
-    }
-
-    let isMounted = true;
-    const fetchDBState = async () => {
-      try {
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) return;
-
-        const res = await fetch("/api/profile/state", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        
-        // Ensure response is OK and is JSON before parsing
-        if (!res.ok) {
-          throw new Error(`Server returned ${res.status}`);
-        }
-        
-        const contentType = res.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-           throw new Error("Received non-JSON response from server");
-        }
-
-        const data = await res.json();
-        
-        if (data.success && Array.isArray(data.wishlist) && isMounted) {
-          const dbWishlist = data.wishlist;
-          let mergedWishlist = [...dbWishlist];
-          
-          try {
-            const localSaved = JSON.parse(localStorage.getItem("ishta_wishlist")) || [];
-            
-            // For wishlist, we just add distinct items.
-            localSaved.forEach(localItem => {
-              const existingIdx = mergedWishlist.findIndex(dbItem => dbItem.id === localItem.id);
-              if (existingIdx === -1) {
-                mergedWishlist.push(localItem);
-              }
-            });
-          } catch(e) {}
-
-          dispatch({ type: "HYDRATE", items: mergedWishlist });
-          dbHydrated.current = true;
-        }
-      } catch (err) {
-        console.error("Failed to sync wishlist from DB");
-      }
-    };
-
-    fetchDBState();
-    return () => { isMounted = false; };
-  }, [user]);
-
-  // 3. Persist to localStorage ALWAYS, and push to DB if authenticated
-  useEffect(() => {
-    localStorage.setItem("ishta_wishlist", JSON.stringify(state.items));
-    
-    if (user && dbHydrated.current) {
-      const pushToDB = async () => {
-        try {
-          const token = await auth.currentUser?.getIdToken();
-          if (!token) return;
-          await fetch("/api/profile/state", {
-            method: "PUT",
-            headers: { 
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({ wishlist: state.items })
-          });
-        } catch(e) {}
-      };
-      
-      const timeoutId = setTimeout(() => pushToDB(), 1000); // 1s Debounce
-      return () => clearTimeout(timeoutId);
-    }
-  }, [state.items, user]);
+    if (!hydrated.current) return; // wait until first mount finishes
+    try {
+      localStorage.setItem("ishta_wishlist", JSON.stringify(state.items));
+    } catch {}
+  }, [state.items]);
 
   const addItem = (item) => dispatch({ type: "ADD", item });
   const removeItem = (id) => dispatch({ type: "REMOVE", id });

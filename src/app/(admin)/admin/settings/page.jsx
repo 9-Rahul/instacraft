@@ -37,7 +37,27 @@ export default function AdminSettingsPage() {
           getTestimonials(true),
           getSiteConfig(true)
         ]);
-        setSiteContent(siteData);
+        const mergeContent = (raw) => ({
+          ...raw,
+          about: {
+            hero: { title: '', description: '', image: '', ...(raw?.about?.hero || {}) },
+            mission: { title: '', text1: '', image: '', ...(raw?.about?.mission || {}) },
+            artisans: {
+              list: raw?.about?.artisans?.list || [],
+              ...(raw?.about?.artisans || {}),
+            },
+            ...(raw?.about || {}),
+          },
+          contact: {
+            overline: '', title: '', description: '',
+            ...(raw?.contact || {}),
+          },
+          footer: {
+            brandDescription: '', copyright: '', logo: '', socialLinks: [],
+            ...(raw?.footer || {}),
+          },
+        });
+        setSiteContent(mergeContent(siteData));
         setTestimonials(testimonialsData);
         setSiteConfig(configData);
         setCategories(lsGetCategories());
@@ -104,6 +124,22 @@ export default function AdminSettingsPage() {
         }
       }
     }));
+  };
+
+  const addArtisan = () => {
+    const newList = [...(siteContent.about.artisans.list || []), { name: 'New Artisan', craft: 'Craft type', story: 'Short story about the artisan...', avatar: '' }];
+    setSiteContent({
+      ...siteContent, 
+      about: { ...siteContent.about, artisans: { ...siteContent.about.artisans, list: newList } }
+    });
+  };
+
+  const deleteArtisan = (index) => {
+    const newList = siteContent.about.artisans.list.filter((_, i) => i !== index);
+    setSiteContent({
+      ...siteContent, 
+      about: { ...siteContent.about, artisans: { ...siteContent.about.artisans, list: newList } }
+    });
   };
 
   const updateContact = (field, value) => {
@@ -343,10 +379,14 @@ export default function AdminSettingsPage() {
             </div>
 
             <section className="admin-card">
-              <h2 className="heading-sm mb-6"><span>Meet Our Artisans</span></h2>
+              <div className="flex-between mb-6">
+                <h2 className="heading-sm"><span>Meet Our Artisans</span></h2>
+                <button type="button" className="btn btn-outline btn-sm" onClick={addArtisan}><Plus size={16} /> Add</button>
+              </div>
               <div className="grid grid-3" style={{ gap: 'var(--space-4)' }}>
                 {siteContent.about.artisans.list.map((a, idx) => (
-                  <div key={idx} className="admin-card" style={{ background: 'var(--surface-sunken)' }}>
+                  <div key={idx} className="admin-card" style={{ background: 'var(--surface-sunken)', position: 'relative' }}>
+                    <button type="button" onClick={() => deleteArtisan(idx)} style={{ position: 'absolute', top: 8, right: 8, color: 'var(--error)', background: 'none', border: 'none' }}><Trash2 size={16} /></button>
                     <div style={{ display: 'flex', gap: 12, marginBottom: 'var(--space-3)' }}>
                       <div style={{ textAlign: 'center' }}>
                         <div style={{ width: 60, height: 60, borderRadius: '50%', overflow: 'hidden', background: 'var(--surface)' }}>

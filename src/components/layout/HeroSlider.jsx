@@ -46,7 +46,12 @@ export default function HeroSlider({ products, initialSlides = [] }) {
     return (
       <div
         className="hero-slider"
-        style={{ minHeight: "80vh", background: "var(--surface-sunken)" }}
+        style={{
+          minHeight: "300px",
+          maxHeight: "600px",
+          height: "60vh",
+          background: "var(--surface-sunken)",
+        }}
       ></div>
     );
   }
@@ -71,6 +76,7 @@ export default function HeroSlider({ products, initialSlides = [] }) {
         >
           {index === current && (
             <video
+              key={slide.video}
               src={slide.video}
               poster={slide.poster}
               className="hero-video-bg"
@@ -85,10 +91,7 @@ export default function HeroSlider({ products, initialSlides = [] }) {
 
           <div className="hero-slider-container">
             <div className="hero-slider-content">
-              <span
-                className="hero-slider-badge"
-                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-              >
+              <span className="hero-slider-badge">
                 <TagIcon size={14} /> {slide.badge}
               </span>
               <span className="hero-slider-subtitle">{slide.subtitle}</span>
@@ -128,7 +131,15 @@ export default function HeroSlider({ products, initialSlides = [] }) {
               {featuredProduct && (
                 <div className="hero-feature-card">
                   <div className="feature-product-row">
-                    <Link href={`/product/${featuredProduct.slug}`} style={{textDecoration: "none", color: "inherit", display: "flex", gap: "var(--space-4)"}}>
+                    <Link
+                      href={`/product/${featuredProduct.slug}`}
+                      style={{
+                        textDecoration: "none",
+                        color: "inherit",
+                        display: "flex",
+                        gap: "var(--space-4)",
+                      }}
+                    >
                       <Image
                         src={featuredProduct.images[0]}
                         alt={featuredProduct.title}
@@ -140,18 +151,22 @@ export default function HeroSlider({ products, initialSlides = [] }) {
                         className="feature-product-image"
                       />
                       <div className="feature-product-meta">
-                          <div
-                            className="feature-product-ratings"
-                            style={{ display: "flex", gap: 2 }}
-                          >
-                            {[...Array(5)].map((_, i) => (
-                              <StarIcon 
-                                key={i} 
-                                size={14} 
-                                className={i < Math.floor(featuredProduct.rating || 0) ? "star-filled" : "star-empty"}
-                              />
-                            ))}
-                          </div>
+                        <div
+                          className="feature-product-ratings"
+                          style={{ display: "flex", gap: 2 }}
+                        >
+                          {[...Array(5)].map((_, i) => (
+                            <StarIcon
+                              key={i}
+                              size={14}
+                              className={
+                                i < Math.floor(featuredProduct.rating || 0)
+                                  ? "star-filled"
+                                  : "star-empty"
+                              }
+                            />
+                          ))}
+                        </div>
                         <h3 className="feature-product-name">
                           {featuredProduct.title}
                         </h3>
@@ -193,43 +208,7 @@ export default function HeroSlider({ products, initialSlides = [] }) {
         </div>
       ))}
 
-      {/* Navigation Arrows */}
-      <button
-        onClick={prevSlide}
-        className="hero-slider-arrow prev"
-        aria-label="Previous slide"
-      >
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-      </button>
-      <button
-        onClick={nextSlide}
-        className="hero-slider-arrow next"
-        aria-label="Next slide"
-      >
-        <svg
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-      </button>
+
 
       {/* Pagination Dots */}
       <div className="hero-slider-dots-wrap">

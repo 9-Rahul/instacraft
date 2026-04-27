@@ -20,6 +20,8 @@ export function normalizeProduct(p) {
     length: toNum(p.length),
     breadth: toNum(p.breadth),
     height: toNum(p.height),
+    size: p.size && !/inch|cm|mm|ft|m/i.test(p.size) ? `${p.size} inches` : p.size,
+    dimensions: p.dimensions || (p.length && p.breadth && p.height ? `${p.length} x ${p.breadth} x ${p.height} inches` : (p.size && !/inch|cm|mm|ft|m/i.test(p.size) ? `${p.size} inches` : p.size)),
     createdAt: p.created_at || p.createdAt,
     updatedAt: p.updated_at || p.updatedAt,
     // Flatten joined tables → plain arrays (same shape as old MongoDB arrays)
@@ -158,6 +160,7 @@ export function normalizeSiteConfig(c) {
     _id: c.id.toString(),
     shippingFee: toNum(c.shipping_fee || c.shippingFee),
     freeShippingThreshold: toNum(c.free_shipping_threshold || c.freeShippingThreshold),
+    maxUploadSize: toNum(c.max_upload_size || c.maxUploadSize),
     createdAt: c.created_at || c.createdAt,
     updatedAt: c.updated_at || c.updatedAt,
   };

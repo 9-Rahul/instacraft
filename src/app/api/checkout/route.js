@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
-import { adminAuth } from "@/lib/firebase-admin";
+import { verifyAuth } from "@/lib/requireAdmin";
 import db from "@/lib/db";
 
 export async function POST(request) {
@@ -15,18 +15,9 @@ export async function POST(request) {
 
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
-    // 1. Verify Firebase token
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ error: "Unauthorized: Missing Token" }, { status: 401 });
-    }
-
-    let decodedToken;
-    try {
-      decodedToken = await adminAuth.verifyIdToken(authHeader.split("Bearer ")[1]);
-    } catch {
-      return NextResponse.json({ error: "Unauthorized: Invalid Token" }, { status: 401 });
-    }
+    // 1. Verify token
+    const { decodedToken, error } = await verifyAuth(request);
+    if (error) return error;
 
     const customerId = decodedToken.uid;
 
@@ -51,7 +42,7 @@ export async function POST(request) {
       const rows = await db.query("SELECT * FROM products WHERE slug = ?", [item.slug]);
       const product = rows[0];
       if (!product) {
-        return NextResponse.json({ error: `Product not found: ${item.slug}` }, { status: 404 });
+        return NextResponse.json({ error: `Product not found: ${item.slug}`, missingSlug: item.slug }, { status: 404 });
       }
 
       if (product.type !== "service" && product.stock < quantity) {
@@ -166,6 +157,13 @@ export async function POST(request) {
             orderId, item.itemProductId, item.slug, item.title, item.qty, item.price, 
             item.image, item.customization ? JSON.stringify(item.customization) : null
           ]
+        );
+      }
+
+      if (couponCode_saved) {
+        await conn.execute(
+          `UPDATE coupons SET used_count = used_count + 1 WHERE code = ?`,
+          [couponCode_saved]
         );
       }
 

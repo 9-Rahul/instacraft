@@ -81,7 +81,11 @@ export default async function ProductDetailPage({ params }) {
 
           <div className="col-layout">
             {/* Gallery */}
-            <ProductGallery images={product.images} title={product.title} />
+            <ProductGallery 
+              images={product.images} 
+              title={product.title} 
+              outOfStock={product.stock === 0} 
+            />
 
             {/* Product Info */}
             <div>

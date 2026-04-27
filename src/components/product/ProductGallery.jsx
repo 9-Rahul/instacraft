@@ -3,8 +3,16 @@
 import { useState } from 'react';
 import Image from 'next/image';
 
-export default function ProductGallery({ images, title }) {
+export default function ProductGallery({ images, title, outOfStock }) {
   const [active, setActive] = useState(0);
+
+  const imageStyle = {
+    display: 'block',
+    width: '100%',
+    height: 'auto',
+    filter: outOfStock ? 'grayscale(1) opacity(0.7)' : 'none',
+    transition: 'filter 0.5s ease, opacity 0.5s ease'
+  };
 
   return (
     <div className="product-gallery">
@@ -16,7 +24,7 @@ export default function ProductGallery({ images, title }) {
           width={800}
           height={800}
           priority
-          style={{ display: 'block', width: '100%', height: 'auto' }}
+          style={imageStyle}
         />
       </div>
 
