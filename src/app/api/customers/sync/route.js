@@ -57,7 +57,7 @@ export async function POST(request) {
     } else {
       // Insert
       const [insertResult] = await db.query(
-        "INSERT INTO customers (firebase_uid, name, email, phone, created_at, updated_at) VALUES (?, ?, ?, ?, NOW(3), NOW(3))",
+        "INSERT INTO customers (firebase_uid, name, email, phone, cart, wishlist, created_at, updated_at) VALUES (?, ?, ?, ?, '[]', '[]', NOW(3), NOW(3))",
         [firebaseUid, name || "Anonymous User", email || null, phone || null],
       );
       const insertedRows = await db.query(

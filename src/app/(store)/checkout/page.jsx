@@ -305,14 +305,71 @@ function CheckoutContent() {
         strategy="lazyOnload"
       />
 
+      {/* Scoped responsive styles for checkout */}
+      <style>{`
+        .checkout-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: var(--space-8);
+        }
+        .checkout-safe-badge {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          color: var(--success);
+          flex-shrink: 0;
+        }
+        .checkout-order-summary {
+          position: sticky;
+          top: calc(var(--navbar-height) + 24px);
+          padding: var(--space-6);
+        }
+        .checkout-coupon-row {
+          display: flex;
+          gap: 8px;
+          align-items: stretch;
+        }
+        .checkout-coupon-row .coupon-input {
+          flex: 1;
+          min-width: 0;
+        }
+        .checkout-pay-btn {
+          white-space: normal;
+          line-height: 1.3;
+          text-align: center;
+          padding-top: 14px;
+          padding-bottom: 14px;
+        }
+        @media (max-width: 960px) {
+          .checkout-order-summary {
+            position: static;
+            top: auto;
+          }
+        }
+        @media (max-width: 540px) {
+          .checkout-header .heading-lg {
+            font-size: var(--fs-20, 1.25rem);
+          }
+          .checkout-safe-badge span {
+            font-size: var(--fs-13);
+          }
+          .checkout-pay-btn {
+            font-size: var(--fs-14);
+          }
+        }
+      `}</style>
+
       <div
         className="section"
         style={{ backgroundColor: "var(--surface-sunken)", minHeight: "100vh" }}
       >
         <div className="container">
-          <div className="flex-between mb-8">
+          <div className="checkout-header">
             <h1 className="heading-lg">Secure Checkout</h1>
-            <div style={{ display: "flex", gap: 12, color: "var(--success)" }}>
+            <div className="checkout-safe-badge">
               <ShieldCheck />{" "}
               <span style={{ fontWeight: 600 }}>100% Safe Payments</span>
             </div>
@@ -320,7 +377,7 @@ function CheckoutContent() {
 
           <div
             className="col-layout"
-            style={{ gridTemplateColumns: "1.5fr 1fr", alignItems: "start" }}
+            style={{ alignItems: "start" }}
           >
             {/* Shipping Form */}
             <div className="card">
@@ -682,7 +739,7 @@ function CheckoutContent() {
 
                   <button
                     type="submit"
-                    className="btn btn-primary btn-lg w-full mt-8"
+                    className="btn btn-primary btn-lg w-full mt-8 checkout-pay-btn"
                     disabled={loading}
                   >
                     {loading
@@ -690,7 +747,7 @@ function CheckoutContent() {
                         ? "Initializing Gateway..."
                         : "Placing Order..."
                       : paymentMethod === "Online"
-                        ? `Proceed to Pay ${formatPrice(finalTotal)} via Razorpay`
+                        ? `Pay ${formatPrice(finalTotal)} via Razorpay`
                         : `Confirm COD Order (${formatPrice(finalTotal)})`}
                   </button>
                 </form>
@@ -699,12 +756,7 @@ function CheckoutContent() {
 
             {/* Order Summary */}
             <div
-              className="card card-bordered"
-              style={{
-                position: "sticky",
-                top: "calc(var(--navbar-height) + 24px)",
-                padding: "var(--space-6)",
-              }}
+              className="card card-bordered checkout-order-summary"
             >
               <h3 className="heading-sm mb-6">Order Summary</h3>
 
@@ -846,7 +898,7 @@ function CheckoutContent() {
                     >
                       Enter coupon code
                     </span>
-                    <div className="flex-between flex-row" style={{ gap: 8 }}>
+                    <div className="checkout-coupon-row">
                       <input
                         type="text"
                         className="form-input coupon-input"
@@ -861,6 +913,7 @@ function CheckoutContent() {
                         type="button"
                         className="btn btn-primary btn-sm coupon-apply-btn"
                         onClick={handleApplyCoupon}
+                        style={{ flexShrink: 0 }}
                       >
                         Apply
                       </button>

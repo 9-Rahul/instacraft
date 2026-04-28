@@ -3862,7 +3862,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 var(--space-10);
+  padding: 0;
   overflow: hidden;
   z-index: calc(var(--z-sticky) + 1);
 }
@@ -3873,7 +3873,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-4);
+  gap: var(--space-8);
   flex-wrap: wrap;
   padding: var(--space-2) 0;
 }

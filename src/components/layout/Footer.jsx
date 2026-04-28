@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { InstagramIcon, FacebookIcon, PinterestIcon, TwitterIcon, PhoneIcon, MailIcon } from '../common/Icons';
+import { InstagramIcon, FacebookIcon, PinterestIcon, TwitterIcon, YouTubeIcon, PhoneIcon, MailIcon } from '../common/Icons';
 import { getCategories, getSiteContent } from '@/lib/api';
 import { useSiteConfig } from '@/store/SiteConfigContext';
 import { WHATSAPP_URL } from '@/lib/constants';
@@ -89,7 +89,7 @@ export default function Footer({ staticContent, staticCategories }) {
                     {s.platform === 'Facebook' && <FacebookIcon size={20} />}
                     {s.platform === 'Pinterest' && <PinterestIcon size={20} />}
                     {s.platform === 'Twitter' && <TwitterIcon size={20} />}
-                    {s.platform === 'YouTube' && <span style={{ fontSize: 12, fontWeight: 700 }}>YT</span>}
+                    {s.platform === 'YouTube' && <YouTubeIcon size={20} />}
                   </a>
                 );
               })}
