@@ -39,7 +39,22 @@ function CategorySection({
         aria-labelledby={`${id}-title`}
       >
         <div className="container">
-          <div className="flex-between mb-8" style={{ alignItems: "flex-end" }}>
+          <style>{`
+            .cat-header-${id} {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+              margin-bottom: var(--space-8);
+              gap: var(--space-4);
+            }
+            @media (max-width: 840px) {
+              .cat-header-${id} {
+                flex-direction: column;
+                align-items: flex-start;
+              }
+            }
+          `}</style>
+          <div className={`cat-header-${id}`}>
             <div>
               <span className="overline">{overline}</span>
               <h2 id={`${id}-title`} className="heading-lg">

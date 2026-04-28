@@ -169,6 +169,21 @@ export default function AdminSettingsPage() {
     }));
   };
 
+  const updateSocialLink = (platform, href) => {
+    const existing = siteContent.footer.socialLinks || [];
+    const idx = existing.findIndex(s => s.platform === platform);
+    let next;
+    if (href.trim() === '') {
+      // Remove the entry if URL is cleared
+      next = existing.filter(s => s.platform !== platform);
+    } else if (idx >= 0) {
+      next = existing.map(s => s.platform === platform ? { ...s, href } : s);
+    } else {
+      next = [...existing, { platform, href }];
+    }
+    updateFooter('socialLinks', next);
+  };
+
   const handleFileUpload = async (e, callback) => {
     const file = e.target.files[0];
     if (file) {
@@ -503,17 +518,22 @@ export default function AdminSettingsPage() {
 
             <div className="divider" />
             <h3 className="heading-sm mb-4">Social Links</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-13)', marginBottom: 'var(--space-4)' }}>Leave a field empty to hide that icon from the footer.</p>
             <div className="grid grid-2" style={{ gap: 'var(--space-4)' }}>
-              {siteContent.footer.socialLinks.map((s, idx) => (
-                <div key={s.platform} className="form-group">
-                  <label className="form-label">{s.platform} URL</label>
-                  <input className="form-input" value={s.href} onChange={e => {
-                    const next = [...siteContent.footer.socialLinks];
-                    next[idx].href = e.target.value;
-                    updateFooter('socialLinks', next);
-                  }} />
-                </div>
-              ))}
+              {['Instagram', 'Facebook', 'YouTube', 'Pinterest', 'Twitter'].map(platform => {
+                const entry = (siteContent.footer.socialLinks || []).find(s => s.platform === platform);
+                return (
+                  <div key={platform} className="form-group">
+                    <label className="form-label">{platform} URL</label>
+                    <input
+                      className="form-input"
+                      placeholder={`https://www.${platform.toLowerCase()}.com/yourpage`}
+                      value={entry?.href || ''}
+                      onChange={e => updateSocialLink(platform, e.target.value)}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}

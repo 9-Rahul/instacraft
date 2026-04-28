@@ -70,13 +70,7 @@ export default function SaleBanner({ initialData }) {
       role="banner"
       aria-label="Promotional announcement"
     >
-      <div
-        className="sale-banner-inner"
-        style={{
-          paddingLeft: banners.length > 1 ? 28 : 0,
-          paddingRight: banners.length > 1 ? 28 : 0,
-        }}
-      >
+      <div className="sale-banner-inner">
         <p className="sale-banner-message">{banner.message}</p>
 
         {banner.ctaText && banner.ctaLink && (

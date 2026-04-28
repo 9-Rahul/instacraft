@@ -80,7 +80,21 @@ export async function GET() {
         _id: raw.id.toString(),
         about,
         contact: { ...defaultData.contact, ...parsedContact },
-        footer: { ...defaultData.footer, ...parsedFooter },
+        footer: (() => {
+          const f = { ...defaultData.footer, ...parsedFooter };
+          if (f.links) {
+            f.links = f.links.map(sec => {
+              if (sec.title === 'Company' && sec.items) {
+                return {
+                  ...sec,
+                  items: sec.items.filter(item => item.label !== 'Press & Media')
+                };
+              }
+              return sec;
+            });
+          }
+          return f;
+        })(),
         customCreations: parsedCustomCreations,
         customCreationsHero: raw.custom_creations_hero || "/images/pexels-photo-31452296.webp"
       };

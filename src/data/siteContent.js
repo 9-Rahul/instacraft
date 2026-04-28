@@ -105,7 +105,6 @@ export const siteContent = {
           { label: "Meet Artisans", href: "/about#artisans" },
           { label: "Our Mission", href: "/about#mission" },
           { label: "Contact Us", href: "/contact" },
-          { label: "Press & Media", href: "#" },
         ],
       },
       {
@@ -127,4 +126,3 @@ export const siteContent = {
     ],
   },
 };
-
